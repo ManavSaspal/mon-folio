@@ -90,6 +90,30 @@
     z-index: 4;
   }
 
+  /* back sits at the far left of the static top bar, so it never scrolls away.
+     margin-right:auto keeps the tabs hard right whether or not it's showing. */
+  .topback {
+    margin-right: auto;
+    align-self: flex-end;
+    margin-bottom: .55rem;
+    display: inline-flex; align-items: center; gap: .45rem;
+    font-family: var(--grot); font-size: .82rem;
+    color: var(--ink); background: var(--paper-2);
+    border: 0; border-radius: 5px; cursor: pointer;
+    padding: .5rem .85rem .55rem;
+    box-shadow: 0 1px 2px rgba(42,38,28,.10), 0 5px 14px rgba(42,38,28,.10);
+    transition: transform .16s ease, background .16s ease;
+  }
+  .topback[hidden] { display: none; }
+  .topback svg {
+    width: 15px; height: 15px; fill: none; stroke: currentColor;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    transition: transform .18s ease;
+  }
+  .topback:hover { transform: translateY(-1.5px); }
+  .topback:hover svg { transform: translateX(-3px); }
+  .topback:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+
   .tabs { display: flex; align-items: flex-end; gap: 4px; }
   .tab {
     font-family: var(--mono);
@@ -265,40 +289,9 @@
     margin-left: .5rem;
   }
 
-  /* project entries as placed cards */
-  .work { display: flex; flex-direction: column; gap: 1.1rem; }
-  .card {
-    background: var(--paper-2);
-    padding: 1rem 1.15rem 1.15rem;
-    text-decoration: none;
-    color: inherit;
-    display: block;
-    transition: transform .18s ease;
-  }
-  .card:nth-child(odd)  { transform: rotate(-.7deg); }
-  .card:nth-child(even) { transform: rotate(.6deg); }
-  .card:hover, .card:focus-visible { transform: rotate(0deg) translateY(-2px); }
-  .card:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
-  .card h3 {
-    font-family: var(--serif);
-    font-size: 1.15rem;
-    font-weight: 400;
-    margin: 0 0 .3rem;
-    letter-spacing: -.01em;
-  }
-  .card h3 em { font-style: italic; color: var(--blue); }
-  .card p { margin: 0 0 .7rem; font-size: .875rem; line-height: 1.5; color: var(--ink-2); }
-  .meta { display: flex; flex-wrap: wrap; gap: .35rem; }
-  .meta span {
-    font-family: var(--mono);
-    font-size: .5625rem;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    padding: .18rem .42rem;
-    background: #EFE7D4;
-    color: #7A6F58;
-  }
-  .meta span.on { background: var(--tape); color: #6A4E0B; }
+  /* NOTE: the old unscoped .work/.card/.meta block was removed. It was dead for
+     the portfolio, but the case studies use .card — so it was silently skinning
+     them and adding a :hover lift to something that isn't clickable. */
 
   .tapebit {
     display: inline-block;
@@ -353,21 +346,10 @@
     background: var(--paper-2); color: var(--ink-2);
     font-size: .76rem; letter-spacing: .01em; white-space: nowrap;
     box-shadow: 0 0 0 1px rgba(60, 48, 30, .12);
-    transition: transform .18s cubic-bezier(.2,.8,.3,1), box-shadow .18s ease;
   }
-  .bw:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 0 1px rgba(60, 48, 30, .2), 0 4px 10px rgba(42, 38, 28, .11);
-  }
-  /* drop-in slot: replace the text in a .bw with <img src="assets/logos/x.svg" alt="X">.
-     Brand colour is the hover reward, same rule the socials follow. */
-  .bw img {
-    height: 15px; width: auto; display: block;
-    filter: grayscale(1); opacity: .78;
-    transition: filter .18s ease, opacity .18s ease;
-  }
-  .bw:hover img { filter: none; opacity: 1; }
-  .bw-more { background: transparent; color: var(--ink-3); box-shadow: 0 0 0 1px rgba(60, 48, 30, .16); }
+  /* no hover — these chips aren't clickable */
+  .bw img { height: 14px; width: auto; max-width: 74px; object-fit: contain; display: block; }
+  .bw-more { background: transparent; color: var(--ink-3); box-shadow: none; padding-left: .2rem; }
 
   .cta { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .35rem; }
   .btn {
@@ -503,7 +485,7 @@
   /* padding-top reserves the room the Guardian folder bursts into. It has to be
      padding on the scroll container, not margin: below 860px this element is
      overflow-x:auto, which makes overflow-y clip anything outside its padding box. */
-  .worked-row { display: flex; align-items: flex-start; gap: clamp(1.2rem, 3vw, 2.6rem); padding-top: 56px; }
+  .worked-row { display: flex; align-items: flex-start; gap: clamp(1.2rem, 3vw, 2.6rem); padding-top: 100px; }
   .worked-track {
     position: relative; display: flex; gap: clamp(1.1rem, 3.2vw, 2.9rem);
     flex: none; padding-right: .3rem;
@@ -534,8 +516,9 @@
 
   /* the open slot — reads as an empty pocket, not a company */
   .t-you {
-    background: rgba(120, 110, 90, .05);
+    background: var(--paper-2);
     color: #A79E8C;
+    font-size: 1.6rem;
     border: 2px dashed rgba(120, 110, 90, .34);
   }
   .co-you .co-name { color: var(--ink-3); }
@@ -564,42 +547,62 @@
 
   .fld-tab {
     position: absolute; left: 0; top: 1px; width: 30px; height: 14px;
-    background: #E3C98F; border-radius: 5px 9px 0 0;
+    background: #EDE8DC; border-radius: 5px 9px 0 0;
     transition: transform .22s cubic-bezier(.2,.8,.3,1);
   }
   .co-folder:hover .fld-tab, .co-folder:focus-within .fld-tab { transform: translate(-2px, -3px) rotate(-5deg); }
   .fld-body {
     position: absolute; left: 0; right: 0; top: 11px; bottom: 0;
-    background: #EFD9A8; border-radius: 4px 9px 9px 9px;
+    background: var(--paper-2); border-radius: 4px 9px 9px 9px;
     display: grid; place-items: center;
-    font-family: var(--serif); font-size: 1.32rem; letter-spacing: -.01em; color: #6F5617;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
+    font-family: var(--serif); font-size: 1.32rem; letter-spacing: -.01em; color: var(--ink-2);
+    box-shadow: inset 0 0 0 1px rgba(60, 48, 30, .12);
+  }
+  .fld-body img { width: 32px; height: auto; display: block; }
+
+  /* company tiles carry real logos, so they sit on paper rather than a pastel block */
+  .co-tile.co-logo {
+    background: var(--paper-2);
+    box-shadow: 0 0 0 1px rgba(60, 48, 30, .12);
+    padding: 10px;
+  }
+  .co-tile.co-logo img {
+    max-width: 100%; max-height: 100%;
+    width: auto; height: auto; object-fit: contain; display: block;
   }
 
   .brands { position: absolute; left: 0; top: 0; width: 64px; height: 64px; pointer-events: none; z-index: 2; }
   .br {
     position: absolute; left: 8px; top: 8px;
-    display: inline-flex; align-items: center;
-    white-space: nowrap; font-size: .68rem; line-height: 1;
-    background: var(--paper-2); color: var(--ink-2);
-    padding: .3rem .55rem; border-radius: 999px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--paper-2);
+    padding: .3rem .42rem; border-radius: 999px;
     box-shadow: 0 0 0 1px rgba(60,48,30,.12), 0 4px 11px rgba(42,38,28,.14);
-    opacity: 0; transform: translate(0, 0) scale(.72);
-    transition: transform .36s cubic-bezier(.2,.9,.3,1.3), opacity .2s ease;
+    opacity: 0; transform: translate(0, 0) scale(.6);
+    transition: transform .4s cubic-bezier(.2,.9,.3,1.3), opacity .2s ease;
   }
-  /* fan up and to the right — Guardian is the leftmost tile, so nothing
-     may travel left of it or the 860px scroll container clips it at origin */
+  .br img { height: 13px; width: auto; max-width: 58px; object-fit: contain; display: block; }
+
+  /* the ten brands fan up and to the right. Guardian is the leftmost tile, so
+     nothing may travel left of it — below 860px the scroller clips at origin. */
+  /* three rows, 32px apart; columns spaced from the measured chip widths
+     (34–73px) so no two logos collide. Rotation kept small for the same reason. */
   .co-folder:hover .br, .co-folder:focus-within .br { opacity: 1; }
-  .co-folder:hover .br-1, .co-folder:focus-within .br-1 { transform: translate(-4px, -25px) rotate(-6deg); }
-  .co-folder:hover .br-2, .co-folder:focus-within .br-2 { transform: translate(6px, -54px) rotate(-2deg); }
-  .co-folder:hover .br-3, .co-folder:focus-within .br-3 { transform: translate(78px, -46px) rotate(5deg); }
-  .co-folder:hover .br-4, .co-folder:focus-within .br-4 { transform: translate(88px, -20px) rotate(8deg); }
-  .co-folder:hover .br-5, .co-folder:focus-within .br-5 { transform: translate(168px, -34px) rotate(3deg); }
-  .br-2 { transition-delay: .04s; }
-  .br-3 { transition-delay: .08s; }
-  .br-4 { transition-delay: .12s; }
-  .br-5 { transition-delay: .16s; }
-  .br-more { color: var(--ink-3); }
+  .co-folder:hover .br-1,  .co-folder:focus-within .br-1  { transform: translate(0px,   -26px) rotate(-3deg); }
+  .co-folder:hover .br-2,  .co-folder:focus-within .br-2  { transform: translate(82px,  -26px) rotate(2.5deg); }
+  .co-folder:hover .br-3,  .co-folder:focus-within .br-3  { transform: translate(164px, -26px) rotate(-2deg); }
+  .co-folder:hover .br-8,  .co-folder:focus-within .br-8  { transform: translate(-2px,  -58px) rotate(3deg); }
+  .co-folder:hover .br-6,  .co-folder:focus-within .br-6  { transform: translate(82px,  -58px) rotate(-3.5deg); }
+  .co-folder:hover .br-5,  .co-folder:focus-within .br-5  { transform: translate(166px, -58px) rotate(2deg); }
+  .co-folder:hover .br-4,  .co-folder:focus-within .br-4  { transform: translate(240px, -58px) rotate(-2.5deg); }
+  .co-folder:hover .br-10, .co-folder:focus-within .br-10 { transform: translate(18px,  -90px) rotate(2deg); }
+  .co-folder:hover .br-9,  .co-folder:focus-within .br-9  { transform: translate(118px, -90px) rotate(-3deg); }
+  .co-folder:hover .br-7,  .co-folder:focus-within .br-7  { transform: translate(200px, -90px) rotate(3.5deg); }
+  .br-2 { transition-delay: .03s; }  .br-3 { transition-delay: .06s; }
+  .br-4 { transition-delay: .09s; }  .br-5 { transition-delay: .12s; }
+  .br-6 { transition-delay: .15s; }  .br-7 { transition-delay: .18s; }
+  .br-8 { transition-delay: .21s; }  .br-9 { transition-delay: .24s; }
+  .br-10 { transition-delay: .27s; }
 
   @media (max-width: 860px) {
     .worked-row {
@@ -718,7 +721,8 @@
   .b-photos:hover .ph-1 { transform: rotate(-4.6deg) translate(-5px, -4px); }
   .b-photos:hover .ph-2 { transform: rotate(4deg) translate(5px, 3px); }
 
-  .callout {
+  /* scoped to the photos tile — the case studies use a .callout of their own */
+  .b-photos .callout {
     position: absolute; z-index: 4;
     font-family: var(--hand); font-size: .84rem; line-height: 1.25;
     padding: .46rem .68rem; border-radius: 13px;
@@ -764,33 +768,18 @@
   }
   .b-contact:hover .mail-btn { background: #24379B; transform: translateY(-2px); }
 
-  /* --- socials --- */
-  /* .bx is already a column, so the tile keeps its title and the marks
-     sit in their own row underneath */
+  /* --- stack --- */
+  /* .bx is already a column, so the tile keeps its title and the chips
+     sit in their own row underneath. No hover — these aren't links. */
   .soc-row { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
-  .soc {
+  .tool {
     display: inline-flex; align-items: center; gap: .42rem;
-    text-decoration: none; color: var(--ink-2);
-    font-size: .78rem; padding: .42rem .74rem; border-radius: 999px;
-    background: var(--paper); box-shadow: 0 0 0 1px rgba(60,48,30,.11);
-    transition: transform .18s cubic-bezier(.2,.8,.3,1), box-shadow .18s ease;
+    height: 30px; padding: 0 .7rem; border-radius: 999px;
+    background: var(--paper); color: var(--ink-2);
+    font-size: .78rem; white-space: nowrap;
+    box-shadow: 0 0 0 1px rgba(60, 48, 30, .11);
   }
-  .soc-i {
-    width: 17px; height: 17px; flex: none;
-    display: grid; place-items: center;
-    color: var(--ink-2);
-    transition: color .18s ease;
-  }
-  .soc-i svg { width: 100%; height: 100%; display: block; }
-  .soc-i b {
-    font-family: var(--serif); font-size: 15px; line-height: 1;
-    font-weight: 400; letter-spacing: -.02em;
-  }
-  /* brand colour is the hover reward, not the resting state */
-  .soc:hover .soc-i, .soc:focus-visible .soc-i { color: var(--brand); }
-  .soc:hover { color: var(--ink); }
-  .soc:hover { transform: translateY(-3px) rotate(-2deg); box-shadow: 0 0 0 1px rgba(60,48,30,.18), 0 5px 12px rgba(42,38,28,.11); }
-  .soc:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+  .tool img { height: 15px; width: auto; max-width: 70px; object-fit: contain; display: block; }
 
   /* ================= FOOTER ================= */
   .site-foot {
@@ -909,10 +898,302 @@
     .tab { font-size: .66rem; padding: .42rem .46rem .5rem; letter-spacing: -.01em; }
   }
 
+  /* ================= VIEWS — home / case studies ================= */
+  .view[hidden] { display: none; }
+  @keyframes pageIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .view.is-entering { animation: pageIn .42s cubic-bezier(.2, .8, .3, 1) both; }
+
+  /* ================= CASE STUDY =================
+     Same paper the rest of the binder sits on: system serif for headings,
+     mono for labels, the pastel tab palette for accents. No web fonts. */
+  .cs {
+    --muted: var(--ink-2);            /* one inline style in the source refers to this */
+    max-width: none;
+    color: var(--ink);
+    font-family: var(--grot);
+  }
+  .cs section { margin-top: clamp(3.6rem, 9vh, 6rem); }
+  /* every section sits on the paper itself — no tinted bands */
+  .cs .tint { background: transparent; padding: 0; border-radius: 0; }
+  .cs h3 { font-family: var(--serif); font-weight: 400; }
+  .cs p { margin: 0; }
+
+  /* ---- hero: runs the full width of the sheet ---- */
+  /* the portfolio's own .hero is a two-column grid; without this reset the
+     case study's <header class="hero"> lands in one column at ~46% width */
+  .cs .hero { display: block; }
+  .cs .hero h1 {
+    font-family: var(--serif); font-weight: 400;
+    font-size: clamp(1.9rem, 5vw, 3.3rem);
+    line-height: 1.06; letter-spacing: -.022em;
+    margin: 0 0 1rem; max-width: none;
+  }
+  .cs .hero h1 em { font-style: italic; }
+  .cs .deck {
+    font-size: clamp(.98rem, 1.5vw, 1.15rem); line-height: 1.55;
+    color: var(--ink-2); max-width: none; margin: 0 0 1.8rem;
+  }
+  .cs .meta-foot {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem 1.4rem; margin: 0; padding-top: 1.15rem;
+    border-top: 1px solid rgba(60, 48, 30, .15);
+  }
+  .cs .meta-foot dt {
+    font-family: var(--mono); font-size: .58rem; letter-spacing: .16em;
+    text-transform: uppercase; color: #9A8F79; margin-bottom: .38rem;
+  }
+  .cs .meta-foot dd { margin: 0; font-size: .86rem; line-height: 1.35; }
+  .cs .tags { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .cs .tags span {
+    font-family: var(--mono); font-size: .55rem; letter-spacing: .12em;
+    text-transform: uppercase; background: #EFE7D4; color: #7A6F58; padding: .2rem .42rem;
+  }
+
+  /* ---- section rule ---- */
+  .cs .divider { display: flex; align-items: center; gap: .8rem; margin-bottom: 2rem; }
+  .cs .divider .n {
+    font-family: var(--mono); font-size: .625rem; letter-spacing: .18em;
+    text-transform: uppercase; color: #9A8F79; white-space: nowrap;
+  }
+  .cs .divider .ln { flex: 1; height: 1px; background: rgba(60, 48, 30, .15); }
+
+  /* ---- process timeline: the dotted track from "Places that let me solve things" ---- */
+  /* one non-wrapping row, so :last-child suppresses the only trailing connector.
+     A wrapped grid draws a dotted line off the end of every row, pointing at nothing. */
+  .cs .timeline {
+    --tgap: clamp(.9rem, 2.4vw, 1.8rem);
+    display: flex; gap: var(--tgap);
+    overflow-x: auto; padding-bottom: .55rem;
+    scrollbar-width: thin; scrollbar-color: #CFC5AE transparent;
+  }
+  .cs .timeline::-webkit-scrollbar { height: 6px; }
+  .cs .timeline::-webkit-scrollbar-thumb { background: #CFC5AE; border-radius: 6px; }
+  .cs .timeline::-webkit-scrollbar-track { background: transparent; }
+  .cs .tstep {
+    position: relative; flex: 0 0 clamp(118px, 13vw, 152px);
+    padding-top: 1.5rem; font-size: .82rem; line-height: 1.32; color: var(--ink-2);
+  }
+  .cs .tstep::before {
+    content: ""; position: absolute; top: 4px; left: 0; width: 9px; height: 9px;
+    border-radius: 50%; background: var(--sage); box-shadow: 0 0 0 3px var(--paper);
+  }
+  .cs .tstep::after {
+    content: ""; position: absolute; top: 8px; left: 9px;
+    right: calc(-1 * var(--tgap));
+    border-top: 2px dotted rgba(84, 70, 48, .28);
+  }
+  .cs .tstep:last-child::after { display: none; }
+
+  /* ---- card decks ---- */
+  .cs .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.2rem; }
+  .cs .acts  { display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); gap: 1.2rem; }
+  /* cards are sticky notes, in the same four colours as "Notes from nice people" */
+  .cs .card, .cs .panel, .cs .act, .cs .q {
+    position: relative;
+    background: var(--n-bg, #F2E3A4); color: var(--n-ink, #574410);
+    border-radius: 2px;
+    padding: 1.35rem 1.2rem 1.35rem;
+    box-shadow: 0 1px 2px rgba(42, 38, 28, .10), 0 7px 16px rgba(42, 38, 28, .09);
+  }
+  /* the gummed strip along the top of a real sticky note */
+  .cs .card::before, .cs .panel::before, .cs .act::before, .cs .q::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 0; height: 28px;
+    background: linear-gradient(rgba(255,255,255,.30), rgba(255,255,255,0));
+    pointer-events: none;
+  }
+  /* folded corner drawn over the corner, never clipped out of it */
+  .cs .card::after, .cs .panel::after, .cs .act::after, .cs .q::after {
+    content: ""; position: absolute; right: 0; bottom: 0; width: 26px; height: 26px;
+    clip-path: polygon(100% 0, 0 100%, 100% 100%);
+    background: linear-gradient(315deg, var(--fold-hi) 18%, var(--fold-lo) 96%);
+    filter: drop-shadow(-1.5px -1.5px 1.5px rgba(58, 46, 26, .26));
+    pointer-events: none;
+  }
+  .cs .card:nth-child(4n+1), .cs .panel:nth-child(4n+1), .cs .act:nth-child(4n+1), .cs .q:nth-child(4n+1)
+    { --n-bg:#F2E3A4; --n-ink:#574410; --fold-hi:#FBF4D3; --fold-lo:#DDC77E; }
+  .cs .card:nth-child(4n+2), .cs .panel:nth-child(4n+2), .cs .act:nth-child(4n+2), .cs .q:nth-child(4n+2)
+    { --n-bg:#D8E4C4; --n-ink:#3B4718; --fold-hi:#EFF4E5; --fold-lo:#BDCFA2; }
+  .cs .card:nth-child(4n+3), .cs .panel:nth-child(4n+3), .cs .act:nth-child(4n+3), .cs .q:nth-child(4n+3)
+    { --n-bg:#EEDACF; --n-ink:#74503F; --fold-hi:#FAEFE9; --fold-lo:#DBBCAB; }
+  .cs .card:nth-child(4n+4), .cs .panel:nth-child(4n+4), .cs .act:nth-child(4n+4), .cs .q:nth-child(4n+4)
+    { --n-bg:#D5E2EC; --n-ink:#315063; --fold-hi:#ECF3F8; --fold-lo:#B5CBDA; }
+  .cs .card:nth-child(odd), .cs .act:nth-child(odd), .cs .panel:nth-child(odd) { transform: rotate(-.55deg); }
+  .cs .card:nth-child(even), .cs .act:nth-child(even), .cs .panel:nth-child(even) { transform: rotate(.45deg); }
+  .cs .card h3, .cs .panel h3, .cs .act h3 {
+    font-size: 1.04rem; letter-spacing: -.01em; margin: 0 0 .6rem; color: inherit;
+  }
+  .cs .card li, .cs .panel li, .cs .act li { color: inherit; opacity: .92; }
+  .cs .card li::marker, .cs .panel li::marker, .cs .act li::marker { color: currentColor; opacity: .5; }
+  .cs .card strong, .cs .panel strong, .cs .act strong { color: inherit; }
+  .cs .card ul, .cs .panel ul, .cs .act ul {
+    margin: 0; padding-left: 1.05rem; display: flex; flex-direction: column; gap: .45rem;
+  }
+  .cs li { font-size: .82rem; line-height: 1.62; color: var(--ink-2); }
+  .cs li::marker { color: #B9AE96; }
+  .cs strong { font-weight: 600; color: var(--ink); }
+
+  /* ---- interview questions ---- */
+  .cs .qintro h3 { font-size: 1.15rem; margin: 0 0 .4rem; }
+  .cs .qintro p { margin: 0 0 1.3rem; font-size: .88rem; line-height: 1.55; color: var(--ink-2); max-width: 58ch; }
+  .cs .qs { display: grid; grid-template-columns: repeat(auto-fit, minmax(242px, 1fr)); gap: .9rem; }
+  .cs .q { display: flex; gap: .7rem; }
+  .cs .q:nth-child(odd)  { transform: rotate(-.5deg); }
+  .cs .q:nth-child(even) { transform: rotate(.4deg); }
+  .cs .q .num { font-family: var(--mono); font-size: .6rem; letter-spacing: .1em; color: inherit; opacity: .55; padding-top: .18rem; }
+  .cs .q p { font-size: .85rem; line-height: 1.45; color: inherit; }
+
+  /* ---- results table ---- */
+  .cs .tw { overflow-x: auto; }
+  .cs table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: .85rem; }
+  .cs th {
+    font-family: var(--mono); font-size: .58rem; letter-spacing: .14em;
+    text-transform: uppercase; color: #9A8F79; text-align: left;
+    padding: .6rem .7rem; border-bottom: 1px solid rgba(60, 48, 30, .18);
+  }
+  .cs td { padding: .62rem .7rem; border-bottom: 1px solid rgba(60, 48, 30, .09); color: var(--ink-2); }
+  .cs th:last-child, .cs td:last-child { text-align: right; }
+  .cs td:last-child {
+    font-family: var(--mono); font-weight: 600; color: #4E6039;
+    font-variant-numeric: tabular-nums;
+  }
+  /* no hover on table rows — they aren't clickable and shouldn't pretend to be */
+
+  /* ---- hypotheses ---- */
+  /* the separator belongs BETWEEN blocks, so hang it off the sibling combinator.
+     :first-of-type doesn't work here — .divider is the first div in .wrap, so it
+     matched nothing and the leading block kept a stray rule above it. */
+  .cs .hyp + .hyp,
+  .cs .screen + .screen {
+    margin-top: 2.6rem;
+    padding-top: 1.8rem;
+    border-top: 1px solid rgba(60, 48, 30, .12);
+  }
+  .cs .lbl {
+    display: block; font-family: var(--mono); font-size: .58rem; letter-spacing: .16em;
+    text-transform: uppercase; color: #9A8F79; margin-bottom: .5rem;
+  }
+  .cs .hyp-head h3 { font-size: clamp(1.15rem, 2.2vw, 1.5rem); letter-spacing: -.015em; margin: 0 0 .5rem; }
+  .cs .hy { margin: 0 0 1.1rem; font-size: .9rem; line-height: 1.55; color: var(--ink-2); max-width: 56ch; }
+  .cs .metrics { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: 1.3rem; }
+  .cs .metrics > div {
+    background: var(--paper-2); border-radius: 6px; padding: .62rem .85rem;
+    box-shadow: 0 0 0 1px rgba(60, 48, 30, .09); min-width: 8rem;
+  }
+  .cs .metrics b {
+    display: block; font-family: var(--serif); font-weight: 400; font-size: 1.22rem;
+    color: #4E6039; font-variant-numeric: tabular-nums; line-height: 1.15;
+  }
+  .cs .metrics span { font-size: .68rem; color: var(--ink-3); line-height: 1.3; }
+
+  /* ---- annotated screenshots ---- */
+  /* image and its annotations always sit side by side */
+  .cs .screen {
+    display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr);
+    gap: clamp(1.6rem, 3vw, 2.6rem); align-items: start;
+  }
+  /* the frame hugs the image so the pins stay pinned to its actual edge,
+     and the cap keeps any single screenshot inside one viewport.
+     (Tried position:sticky here so the shot holds while you read its notes —
+     it would not engage as a grid item in this scroller, so it's back to relative.) */
+  .cs .canvas, .cs .shot-plain {
+    position: relative; margin: 0 auto;
+    width: fit-content; max-width: 100%;
+    background: var(--paper-2); padding: 10px; border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(42, 38, 28, .10), 0 8px 20px rgba(42, 38, 28, .09);
+  }
+  .cs .canvas img, .cs .shot-plain img {
+    display: block;
+    width: auto; max-width: 100%;
+    max-height: min(66vh, calc(100vh - var(--top) - 9rem));
+    height: auto; border-radius: 2px;
+    border: 1px solid rgba(60, 48, 30, .28);
+  }
+  /* ---- annotations: pin ↔ description are one control ---- */
+  .cs .pin, .cs .ann li::before {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-family: var(--mono); font-weight: 600; font-size: .7rem;
+    background: var(--blue); color: #F7F5EE;
+    transition: transform .18s cubic-bezier(.2,.8,.3,1), background .18s ease;
+  }
+  .cs .pin {
+    position: absolute; left: -13px; transform: translateY(-50%);
+    box-shadow: 0 0 0 3px var(--paper-2), 0 3px 8px rgba(42, 38, 28, .30);
+    cursor: pointer;
+  }
+  .cs .pin.in { transform: translate(-50%, -50%); }
+  .cs .pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+  .cs .ann ol { margin: 0; padding: 0; list-style: none; counter-reset: ann; display: flex; flex-direction: column; gap: .5rem; }
+  .cs .ann li {
+    counter-increment: ann; display: flex; gap: .65rem; font-size: inherit;
+    padding: .5rem .6rem; margin: -.1rem -.6rem; border-radius: 7px;
+    cursor: pointer;
+    transition: background .2s ease;
+  }
+  .cs .ann li::before { content: counter(ann); flex: none; }
+  .cs .ann li:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .cs .ann b { display: block; font-family: var(--serif); font-weight: 400; font-size: .95rem; color: var(--ink); margin-bottom: .18rem; }
+  .cs .ann span { font-size: .8rem; line-height: 1.5; color: var(--ink-2); }
+
+  /* hovering either half previews the pair */
+  .cs .ann li.is-hot { background: rgba(84, 70, 48, .055); }
+  .cs .pin.is-hot { transform: translateY(-50%) scale(1.14); }
+  .cs .pin.in.is-hot { transform: translate(-50%, -50%) scale(1.14); }
+
+  /* clicking lifts the description off the paper — a surface change, not a colour wash */
+  .cs .ann li.is-active {
+    background: var(--paper-2);
+    box-shadow: 0 0 0 1px rgba(60, 48, 30, .13), 0 5px 14px rgba(42, 38, 28, .10);
+  }
+  .cs .ann li.is-active::before, .cs .pin.is-active { background: #24379B; }
+  .cs .pin.is-active { transform: translateY(-50%) scale(1.2); }
+  .cs .pin.in.is-active { transform: translate(-50%, -50%) scale(1.2); }
+
+  /* ---- two-up, bars, pull quotes ---- */
+  .cs .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(262px, 1fr)); gap: 1.7rem; }
+  .cs .split-lbl {
+    font-family: var(--mono); font-size: .58rem; letter-spacing: .16em;
+    text-transform: uppercase; color: #9A8F79; margin: 0 0 .85rem;
+  }
+  .cs .sub {
+    font-family: var(--mono); font-size: .58rem; letter-spacing: .14em;
+    text-transform: uppercase; color: #9A8F79; margin: 0 0 .5rem;
+  }
+  .cs .bars { display: flex; flex-direction: column; gap: .8rem; }
+  .cs .bar-row { display: flex; justify-content: space-between; font-size: .8rem; color: var(--ink-2); margin-bottom: .32rem; }
+  .cs .bar-row b { font-family: var(--mono); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .cs .bar-track { height: 8px; border-radius: 99px; background: rgba(84, 70, 48, .12); overflow: hidden; }
+  .cs .bar-fill { height: 100%; border-radius: 99px; background: var(--sage); }
+  .cs .measure { max-width: 62ch; font-size: .9rem; line-height: 1.6; color: var(--ink-2); }
+  .cs .callout {
+    font-family: var(--serif); font-style: italic;
+    font-size: clamp(1.05rem, 2vw, 1.3rem); line-height: 1.45;
+    color: var(--ink); max-width: 46ch; margin-top: 1.5rem;
+    padding-left: 1.05rem; border-left: 3px solid var(--tape);
+  }
+  .cs .became {
+    font-family: var(--serif); font-size: clamp(1.2rem, 2.4vw, 1.6rem);
+    letter-spacing: -.015em; margin: 0 0 .6rem;
+  }
+  .cs footer {
+    margin-top: clamp(2.5rem, 6vh, 4rem); padding-top: 1.1rem;
+    border-top: 1px solid rgba(60, 48, 30, .15);
+    font-size: .78rem; color: var(--ink-3);
+  }
+
+  @media (max-width: 760px) {
+    .cs .screen { grid-template-columns: 1fr; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; }
     /* the folder stops asking for attention; the burst still reveals, just instantly */
     .fld { animation: none !important; }
+    .view.is-entering { animation: none !important; }
   }
 </style>
 </head>
@@ -924,6 +1205,10 @@
 <div class="bg-readout" role="status" aria-live="polite"><i>1/3</i><span>Canvas</span></div>
 
 <header class="topbar">
+  <button class="topback" type="button" data-back hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H6M12 6l-6 6 6 6"/></svg>
+    Back to work
+  </button>
   <nav class="tabs" aria-label="Sections">
     <button class="tab" role="tab" aria-selected="true">work</button>
     <button class="tab" role="tab" aria-selected="false">experience</button>
@@ -937,6 +1222,8 @@
 <div class="page-shadow" aria-hidden="true"></div>
 <main class="page">
   <div class="sheet">
+
+    <div class="view" data-view="home">
     <div class="col">
 
       <section class="hero">
@@ -947,22 +1234,21 @@
           <p class="hero-voice">I care about design that&rsquo;s both meticulous and human.</p>
 
           <div class="hero-meta">
-            <span class="role">Sr UX designer, <b>One Guardian Brands</b></span>
+            <span class="role">Sr UX designer @ <b>One Guardian Brands</b> &middot; 2+ YoE</span>
           </div>
 
-          <!-- LOGO SLOTS: swap each chip's text for <img src="assets/logos/<brand>.svg" alt="<Brand>"> -->
           <div class="brandwall">
-            <span class="bw">Bellavita</span>
-            <span class="bw">GNC</span>
-            <span class="bw">SleepyCat</span>
-            <span class="bw">Thrive</span>
-            <span class="bw bw-more">+7 others</span>
+            <span class="bw"><img src="assets/brands/bellavita.png" alt="Bellavita"></span>
+            <span class="bw"><img src="assets/brands/gnc.png" alt="GNC"></span>
+            <span class="bw"><img src="assets/brands/sleepycat.png" alt="SleepyCat"></span>
+            <span class="bw"><img src="assets/brands/thriveco.png" alt="ThriveCo"></span>
+            <span class="bw bw-more">+6 others</span>
           </div>
 
           <div class="cta">
             <a class="btn btn-primary" href="#summary">
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M16.5 10.5 21 8v8l-4.5-2.5z"/></svg>
-              Watch summary
+              Who is she
             </a>
             <a class="btn btn-ghost" href="#contact">Let&rsquo;s chat</a>
           </div>
@@ -986,7 +1272,7 @@
         <!-- PLACEHOLDER: project titles and links are stand-ins -->
         <div class="wa-grid">
 
-          <a class="wa-card" href="#">
+          <a class="wa-card" href="#gnc" data-case="gnc">
             <span class="plate p-sage"></span>
             <span class="wa-meta">
               <span class="wa-name">What aids decision making while buying supplements online?</span>
@@ -996,7 +1282,7 @@
             </span>
           </a>
 
-          <a class="wa-card" href="#">
+          <a class="wa-card" href="#bella" data-case="bella">
             <span class="plate p-butter"></span>
             <span class="wa-meta">
               <span class="wa-name">How do you buy a perfume you can&rsquo;t smell?</span>
@@ -1035,47 +1321,46 @@
         <div class="worked-row">
           <div class="worked-track">
 
-            <!-- LOGO SLOTS: same brands as the hero strip -->
+            <div class="co co-you">
+              <span class="co-tile t-you" aria-hidden="true">?</span>
+              <span class="co-name">yours?</span>
+            </div>
+
             <div class="co co-folder" tabindex="0">
-              <span class="fld" aria-hidden="true">
+              <span class="fld">
                 <span class="fld-tab"></span>
-                <span class="fld-body">G</span>
+                <span class="fld-body"><img src="assets/companies/one-guardian.png" alt="One Guardian"></span>
               </span>
               <span class="brands">
-                <span class="br br-1">Bellavita</span>
-                <span class="br br-2">GNC</span>
-                <span class="br br-3">SleepyCat</span>
-                <span class="br br-4">Thrive</span>
-                <span class="br br-5 br-more">+7 others</span>
+                <span class="br br-1"><img src="assets/brands/bellavita.png" alt="Bellavita"></span>
+                <span class="br br-2"><img src="assets/brands/gnc.png" alt="GNC"></span>
+                <span class="br br-3"><img src="assets/brands/thriveco.png" alt="ThriveCo"></span>
+                <span class="br br-4"><img src="assets/brands/sleepycat.png" alt="SleepyCat"></span>
+                <span class="br br-5"><img src="assets/brands/rubans.png" alt="Rubans"></span>
+                <span class="br br-6"><img src="assets/brands/kenaz.png" alt="Kénaz"></span>
+                <span class="br br-7"><img src="assets/brands/bevzilla.png" alt="Bevzilla"></span>
+                <span class="br br-8"><img src="assets/brands/embarouge.png" alt="Embarouge"></span>
+                <span class="br br-9"><img src="assets/brands/guzz.png" alt="Guzz"></span>
+                <span class="br br-10"><img src="assets/brands/betteralt.png" alt="BetterAlt"></span>
               </span>
-              <span class="co-name">Guardian</span>
-              <span class="co-yrs">2023 – now</span>
+              <span class="co-name">One Guardian</span>
+              <span class="co-yrs">Sept &rsquo;25 &ndash; now</span>
             </div>
 
             <div class="co">
-              <span class="co-tile t-4" aria-hidden="true">B</span>
-              <span class="co-name">Bloom</span>
-              <span class="co-yrs">2023</span>
+              <span class="co-tile co-logo"><img src="assets/companies/tapsta.png" alt="Tapsta"></span>
+              <span class="co-name">Tapsta</span>
+              <span class="co-yrs">Nov &rsquo;24 &ndash; Jul &rsquo;25</span>
             </div>
             <div class="co">
-              <span class="co-tile t-3" aria-hidden="true">M</span>
-              <span class="co-name">Mesa</span>
-              <span class="co-yrs">2022</span>
+              <span class="co-tile co-logo"><img src="assets/companies/quantela.png" alt="Quantela"></span>
+              <span class="co-name">Quantela</span>
+              <span class="co-yrs">Jun &rsquo;24 &ndash; Aug &rsquo;24</span>
             </div>
             <div class="co">
-              <span class="co-tile t-2" aria-hidden="true">T</span>
-              <span class="co-name">Tenfold</span>
-              <span class="co-yrs">2022</span>
-            </div>
-            <div class="co">
-              <span class="co-tile t-1" aria-hidden="true">N</span>
-              <span class="co-name">Northwind</span>
-              <span class="co-yrs">2021 – 2022</span>
-            </div>
-
-            <div class="co co-you">
-              <span class="co-tile t-you" aria-hidden="true">Y</span>
-              <span class="co-name">yours?</span>
+              <span class="co-tile co-logo"><img src="assets/companies/bluelearn.png" alt="Bluelearn"></span>
+              <span class="co-name">Bluelearn</span>
+              <span class="co-yrs">Aug &rsquo;21 &ndash; May &rsquo;22</span>
             </div>
 
           </div>
@@ -1171,10 +1456,14 @@
         </a>
 
         <div class="bx b-socials">
-          <span class="bx-t">Elsewhere on the internet</span>
+          <span class="bx-t">Stack</span>
+          <!-- LOGO SLOTS: swap each chip's text for <img src="assets/tools/<name>.png" alt="<Name>"> -->
           <div class="soc-row">
-            <a class="soc" href="#" style="--brand:#0A66C2" aria-label="LinkedIn"><span class="soc-i" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13Zm1.78 13.02H3.56V9h3.56v11.45ZM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0Z"/></svg></span>LinkedIn</a>
-            <a class="soc" href="#" style="--brand:#1A1A1A" aria-label="Medium"><span class="soc-i" aria-hidden="true"><b>M</b></span>Medium</a>
+            <span class="tool">Figma</span>
+            <span class="tool">Claude</span>
+            <span class="tool">Notion</span>
+            <span class="tool">ChatGPT</span>
+            <span class="tool">Gemini</span>
           </div>
         </div>
 
@@ -1191,6 +1480,638 @@
       </footer>
 
     </div>
+    </div>
+
+<div class="view" data-view="gnc" hidden>
+<article class="cs cs-gnc">
+
+<header class="hero">
+  <div class="wrap">
+    <h1>What aids decision making while buying supplements online?</h1>
+    <p class="deck">A methodical user-research and conversion optimization program designed to diagnose trust hurdles, buying friction, and pricing models for GNC India.</p>
+    <dl class="meta-foot">
+      <div><dt>Role</dt><dd>Product Designer</dd></div>
+      <div><dt>Programme</dt><dd>E-Commerce Conversion Programme</dd></div>
+      <div><dt>Domain</dt><dd>Health and Wellness Supplements</dd></div>
+      <div><dt>Tools</dt><dd class="tags"><span>Claude</span><span>Figma</span><span>Notion</span></dd></div>
+    </dl>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="divider"><span class="n">01 / Scientific Process</span><span class="ln"></span></div>
+    <div class="timeline">
+      <div class="tstep">Audit the site</div>
+      <div class="tstep">Watch session recordings</div>
+      <div class="tstep">Find bottlenecks</div>
+      <div class="tstep">Write interview questions</div>
+      <div class="tstep">Talk to users</div>
+      <div class="tstep">Get insights</div>
+      <div class="tstep">Build personas</div>
+      <div class="tstep">Turn bottlenecks into actionables</div>
+      <div class="tstep">Ship as controlled A/B test</div>
+    </div>
+  </div>
+</section>
+
+<section class="tint">
+  <div class="wrap">
+    <div class="divider"><span class="n">02 / User Interviews</span><span class="ln"></span></div>
+    <div class="qintro">
+      <h3>Unbiased Inquiries</h3>
+      <p>To uncover raw behaviors rather than opinion-gathering on design assets, our conversational questionnaire avoided direct UI discussion completely.</p>
+    </div>
+    <div class="qs">
+      <div class="q"><span class="num">01</span><p>What's your lifestyle like?</p></div>
+      <div class="q"><span class="num">02</span><p>How did you hear about GNC?</p></div>
+      <div class="q"><span class="num">03</span><p>What makes you trust a nutrition brand?</p></div>
+      <div class="q"><span class="num">04</span><p>How do you decide which supplement to take?</p></div>
+      <div class="q"><span class="num">05</span><p>Do you wait for offers to buy, or buy as and when needed?</p></div>
+      <div class="q"><span class="num">06</span><p>Would you subscribe for a discount?</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="divider"><span class="n">03 / Field Discoveries</span><span class="ln"></span></div>
+    <div class="board">
+      <div class="card"><h3>Discovery</h3><ul>
+        <li>Instagram dominant via influencer custom discount codes.</li>
+        <li>Word of mouth equally strong: peer friends, gym trainers, and colleagues.</li>
+        <li>Active WhatsApp groups push timely deals and coupon codes.</li>
+        <li>YouTube is highly utilized by research-led analytical buyers.</li>
+        <li>Offline pharmacy chains (Apollo) popular for in-person instant gratification.</li>
+      </ul></div>
+      <div class="card"><h3>Trust</h3><ul>
+        <li>Trainer or peer recommendation is the absolute strongest credibility signal.</li>
+        <li>'90 Years' brand heritage anchors older and research-led segments.</li>
+        <li>Functional trust is proven post-purchase by taste, mixability, and lack of bloating.</li>
+        <li>Strict research-led buyers heavily scrutinize ingredient profiles and lab tests.</li>
+        <li>Widespread offline local store availability legitimizes the brand's premium stature.</li>
+      </ul></div>
+      <div class="card"><h3>Purchase Triggers</h3><ul>
+        <li>A large price-conscious segment actively waits for deals, believing an offer is always live.</li>
+        <li>Higher-AOV buyers ignore discounts and buy immediately on personal or health need.</li>
+      </ul></div>
+      <div class="card"><h3>Subscription</h3><ul>
+        <li>Higher-AOV health planners are highly open to friction-free automated delivery.</li>
+        <li>Price-sensitive cohorts resist subscriptions, wanting to retain flexibility for bigger flash offers.</li>
+      </ul></div>
+      <div class="card"><h3>Confusion</h3><ul>
+        <li>Wellness/lifestyle buyers suffer from significantly more confusion than dedicated protein buyers.</li>
+        <li>Back of pack ingredient label is the primary source of personal reference.</li>
+        <li>Coached/guided fitness enthusiasts experience the least decision paralysis.</li>
+      </ul></div>
+      <div class="card"><h3>Buying Patterns</h3><ul>
+        <li>Single-product checkout is dominant; basket bundling is not instinctively natural.</li>
+        <li>Instinctive pairings do exist: Protein + Creatine, or Protein + Multivitamins.</li>
+        <li>Restock habits are strictly monthly, mapping directly to standardized packaging volume sizes.</li>
+      </ul></div>
+      <div class="card"><h3>Price Perception</h3><ul>
+        <li>GNC is viewed as cost-effective only when an offer is clearly active.</li>
+        <li>The standard no-offer state actively triggers a 'wrong time to buy' anxiety.</li>
+        <li>Budget-constrained consumers plan routines around deal calendars rather than need cycles.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="tint">
+  <div class="wrap">
+    <div class="divider"><span class="n">05 / UX Interventions</span><span class="ln"></span></div>
+    <div class="acts">
+      <div class="act"><h3>Make the site good at confirming</h3><ul>
+        <li>Persistent '90 Years Heritage' legacy badge directly on the product detail page.</li>
+        <li>Direct lab test certificate results available via a prominent expandable widget.</li>
+        <li>Clear back-of-package nutritional panel previews embedded inside listing images.</li>
+        <li>Highlighted flavor profiles and mixability feedback scores clearly visible.</li>
+        <li>Official 'Trainer Recommended' contextual tags on high-performing SKUs.</li>
+      </ul></div>
+      <div class="act"><h3>Give the uncoached buyer a framework</h3><ul>
+        <li>Goal-based recommendation quiz based on the customized FAE framework (Goal → Fitness Level → Dietary Preference → Budget → Sensitivities).</li>
+        <li>Expertly curated pre-configured product bundles positioned explicitly as 'trainer recommended logic'.</li>
+      </ul></div>
+      <div class="act"><h3>Convert the wait into a cycle</h3><ul>
+        <li>Direct currency % discount representations explicitly featured on product listings.</li>
+        <li>Automated CRM restock nudges systematically sent at consumer consumption days 22-25.</li>
+        <li>Highly visual wishlist price-drop notifications triggered in real-time.</li>
+        <li>Customizable 'Subscribe &amp; Save' programs displaying explicit absolute rupee savings upfront.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="divider"><span class="n">06 / A/B Test Results</span><span class="ln"></span></div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Campaign experiment</th><th>Primary metric goal</th><th>Measured lift</th></tr></thead>
+        <tbody>
+          <tr><td>EMI Options</td><td>Purchase Revenue</td><td>+13.37%</td></tr>
+          <tr><td>Shoppable Videos</td><td>Purchase Revenue</td><td>+11.79%</td></tr>
+          <tr><td>Shoppable Videos (New)</td><td>Purchase Revenue</td><td>+10.49%</td></tr>
+          <tr><td>Product Title</td><td>Purchase Revenue</td><td>+10.00%</td></tr>
+          <tr><td>Product Card</td><td>ATC on product card</td><td>+8.51%</td></tr>
+          <tr><td>Variant Selector Popup</td><td>Purchase Event</td><td>+7.43%</td></tr>
+          <tr><td>Trustification Section</td><td>Shopify Purchase</td><td>+6.35%</td></tr>
+          <tr><td>GNC Cash PDP</td><td>Purchase Event</td><td>+5.89%</td></tr>
+          <tr><td>Cart Progress Bar</td><td>Purchase Revenue</td><td>+5.02%</td></tr>
+          <tr><td>New Cart Upsell UI</td><td>Purchase Revenue</td><td>+3.84%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="tint">
+  <div class="wrap">
+    <div class="divider"><span class="n">07 / Experiment Rationale</span><span class="ln"></span></div>
+
+    <div class="hyp">
+      <div class="hyp-head">
+        <span class="lbl">Campaign Hypothesis 01</span>
+        <h3>EMI</h3>
+        <p class="hy">A worldwide whey protein shortage is pushing prices up. Introducing partial payment / EMI keeps the purchase affordable.</p>
+        <div class="metrics">
+          <div><b>+13.37%</b><span>Purchase revenue lift</span></div>
+          <div><b>12%</b><span>EMI share</span></div>
+          <div><b>6.4%</b><span>CR gain</span></div>
+        </div>
+      </div>
+      <figure class="shot-plain">
+        <img loading="lazy" decoding="async" src="assets/case-studies/gnc-01.png" alt="An EMI strip on the product page reading ₹2000 per month for 6 months EMI options via Snapmint, with a Buy on EMI link.">
+      </figure>
+    </div>
+
+    <div class="hyp">
+      <div class="hyp-head">
+        <span class="lbl">Campaign Hypothesis 03</span>
+        <h3>Shoppable Videos</h3>
+        <p class="hy">Social proof is a major way of gaining user trust — enrich it with shoppable videos.</p>
+        <div class="metrics">
+          <div><b>+11.79%</b><span>Purchase revenue lift</span></div>
+          <div><b>8.1%</b><span>CTR lift</span></div>
+        </div>
+      </div>
+      <div class="screen">
+        <figure class="canvas">
+          <img loading="lazy" decoding="async" src="assets/case-studies/gnc-02.png" alt="Watch. Shop. Transform. — a carousel of creator videos, each with the product attached beneath and a discounted price.">
+          <span class="pin" style="top:6.4%">1</span>
+          <span class="pin" style="top:59%">2</span>
+          <span class="pin" style="top:88%">3</span>
+        </figure>
+        <div class="ann"><ol>
+          <li><div><b>Shoppable, not just watchable</b><span>The rail sits on the PDP as “Watch. Shop. Transform.” — proof and purchase in the same module.</span></div></li>
+          <li><div><b>Real creators, regional language</b><span>Captions run in the buyer's own language, matching the influencer discovery channel the research identified.</span></div></li>
+          <li><div><b>Product attached to the proof</b><span>Each video carries its SKU, price and discount beneath it, so the trust signal converts without a hunt.</span></div></li>
+        </ol></div>
+      </div>
+    </div>
+
+    <div class="hyp">
+      <div class="hyp-head">
+        <span class="lbl">Campaign Hypothesis 04</span>
+        <h3>Product Title</h3>
+        <p class="hy">Make the title crisp. Let users see only what's needed.</p>
+        <div class="metrics">
+          <div><b>+10.00%</b><span>Purchase revenue lift</span></div>
+          <div><b>4.7%</b><span>CR gain</span></div>
+        </div>
+      </div>
+      <div class="screen">
+        <figure class="canvas wide">
+          <img loading="lazy" decoding="async" src="assets/case-studies/gnc-03.jpg" alt="Product title area reading 100% Whey Protein, with a nutrition strip of 24g Protein, 5.5g BCAA, 11.4g EAA, and a 4.3 rating from 1513 reviews.">
+          <span class="pin" style="top:22%">1</span>
+          <span class="pin" style="top:48%">2</span>
+          <span class="pin" style="top:82%">3</span>
+        </figure>
+        <div class="ann"><ol>
+          <li><div><b>Name only</b><span>“100% Whey Protein” — no weight, flavour or marketing string competing for the first read.</span></div></li>
+          <li><div><b>The spec that decides</b><span>24g Protein · 5.5g BCAA · 11.4g EAA on one line, for the research-led buyer who scrutinises the profile.</span></div></li>
+          <li><div><b>Rating before the fold</b><span>4.3 from 1,513 reviews, with a Review Summary shortcut, since reviews are the fallback credibility signal.</span></div></li>
+        </ol></div>
+      </div>
+    </div>
+
+    <div class="hyp">
+      <div class="hyp-head">
+        <span class="lbl">Campaign Hypothesis 05</span>
+        <h3>Product Card</h3>
+        <p class="hy">If users are making an informed decision about size and flavour variant, put the variant selector on the card and simplify the information to make it more readable.</p>
+        <div class="metrics">
+          <div><b>+8.51%</b><span>ATC on product card lift</span></div>
+          <div><b>6.1%</b><span>CR gain</span></div>
+        </div>
+      </div>
+      <div class="screen">
+        <figure class="canvas">
+          <img loading="lazy" decoding="async" src="assets/case-studies/gnc-04.png" alt="Listing product card for 100% Whey Protein Pro Performance, with a BestSeller badge, rating, an inline variant dropdown for flavour and weight, a discount tag and an Add To Cart button.">
+          <span class="pin" style="top:52%">1</span>
+          <span class="pin" style="top:70%">2</span>
+          <span class="pin" style="top:78.5%">3</span>
+          <span class="pin" style="top:93%">4</span>
+        </figure>
+        <div class="ann"><ol>
+          <li><div><b>Rating above the name</b><span>4.3 from 1,234 reviews reads before the title, since reviews are the fallback credibility signal in the grid too.</span></div></li>
+          <li><div><b>The variant selector, on the card</b><span>Flavour and weight resolve in the listing — the size-and-flavour decision no longer needs a trip to the PDP and back.</span></div></li>
+          <li><div><b>Never a no-offer state</b><span>47% OFF sits beside the live campaign tag, so the card never shows the bare price that reads as the wrong time to buy.</span></div></li>
+          <li><div><b>Buy from the grid</b><span>Add To Cart completes the whole decision inside the card, which is what the ATC metric measures.</span></div></li>
+        </ol></div>
+      </div>
+    </div>
+
+    <div class="hyp">
+      <div class="hyp-head">
+        <span class="lbl">Campaign Hypothesis 06</span>
+        <h3>Variant Selector Popup</h3>
+        <p class="hy">A variant selector popup on the PDP curbs back-and-forth scrolling and focuses decision making.</p>
+        <div class="metrics">
+          <div><b>+7.43%</b><span>Purchase event lift</span></div>
+        </div>
+      </div>
+      <div class="screen">
+        <figure class="canvas">
+          <img loading="lazy" decoding="async" src="assets/case-studies/gnc-05.png" alt="Select Variant sheet showing weight tiles with prices and discounts, a KG/LB toggle, flavour chips with unavailable options greyed out, and a sticky summary with Add To Cart.">
+          <span class="pin" style="top:15%">1</span>
+          <span class="pin" style="top:32%">2</span>
+          <span class="pin" style="top:63%">3</span>
+          <span class="pin" style="top:86%">4</span>
+        </figure>
+        <div class="ann"><ol>
+          <li><div><b>Every combination in one view</b><span>Weight and flavour sit in a single sheet, so switching no longer means scrolling back to re-check price.</span></div></li>
+          <li><div><b>Price and discount on every tile</b><span>Each weight carries its own price and % off — the no-offer state never appears.</span></div></li>
+          <li><div><b>Unavailable shown, not hidden</b><span>1kg, Mocha Cappuccino and Banana stay visible but greyed, so dead ends are answered before they're discovered.</span></div></li>
+          <li><div><b>Commit without leaving</b><span>A sticky summary restates the exact selection and price above Add To Cart.</span></div></li>
+        </ol></div>
+      </div>
+    </div>
+
+    <div class="hyp">
+      <div class="hyp-head">
+        <span class="lbl">Campaign Hypothesis 07</span>
+        <h3>Trustification Section</h3>
+        <p class="hy">If trust is our major driver, it should get its own section.</p>
+        <div class="metrics">
+          <div><b>+6.35%</b><span>Shopify purchase lift</span></div>
+          <div><b>4.9%</b><span>CR gain</span></div>
+          <div><b>8.6%</b><span>Bounce drop</span></div>
+        </div>
+      </div>
+      <div class="screen">
+        <figure class="canvas wide">
+          <img loading="lazy" decoding="async" src="assets/case-studies/gnc-06.png" alt="The GNC Difference section listing DigeZyme patented enzymes, Each Batch Certified with a View Reports link, NABL Lab Tested by Eurofins with a Tamper Proof Results tag, and a row of certification badges.">
+          <span class="pin" style="top:17%">1</span>
+          <span class="pin" style="top:41%">2</span>
+          <span class="pin" style="top:62%">3</span>
+          <span class="pin" style="top:87%">4</span>
+        </figure>
+        <div class="ann"><ol>
+          <li><div><b>Patented, not generic</b><span>DigeZyme® leads — a proprietary claim rather than a category one.</span></div></li>
+          <li><div><b>Independently tested, not self-declared</b><span>Each batch certified, with View Reports linking to the actual certificates the research-led segment scrutinises.</span></div></li>
+          <li><div><b>Named third party</b><span>NABL Lab Tested · Eurofins, tagged Tamper Proof Results — the lab is named, so the claim is checkable.</span></div></li>
+          <li><div><b>Badges do the scanning</b><span>Banned-substance tested, zero maltodextrin, no artificial colours, DigeZyme, gluten free — for buyers who won't read the copy.</span></div></li>
+        </ol></div>
+      </div>
+    </div>
+
+    <div class="hyp">
+      <div class="hyp-head">
+        <span class="lbl">Campaign Hypothesis 08</span>
+        <h3>GNC Cash PDP</h3>
+        <p class="hy">If we're giving people loyalty points and letting them redeem them, that should shine upfront.</p>
+        <div class="metrics">
+          <div><b>+5.89%</b><span>Purchase event lift</span></div>
+          <div><b>+74.70%</b><span>PDP add-to-cart lift</span></div>
+        </div>
+      </div>
+      <div class="screen">
+        <figure class="canvas wide">
+          <img loading="lazy" decoding="async" src="assets/case-studies/gnc-07.png" alt="Two states of the GNC Cash popup side by side: logged out, with loyalty discount locked behind a Login link; and logged in, showing an existing balance applied as cashback. Both end at the same final price.">
+          <span class="pin in" style="top:53%; left:37%">1</span>
+          <span class="pin in" style="top:26%; left:92%">2</span>
+          <span class="pin in" style="top:63%; left:30%">3</span>
+        </figure>
+        <div class="ann"><ol>
+          <li><div><b>The locked state still sells</b><span>Logged out, the loyalty line is shown as an unlockable discount with a Login prompt rather than hidden.</span></div></li>
+          <li><div><b>Balance surfaced on sight</b><span>Logged in, the popup opens with the cash already in the account, applied as a visible 5% cashback line.</span></div></li>
+          <li><div><b>The maths done for them</b><span>MRP, product discount, prepaid discount and loyalty resolve to one Final Price — answering “what is this actually worth to me?”</span></div></li>
+        </ol></div>
+      </div>
+    </div>
+
+    <div class="hyp">
+      <div class="hyp-head">
+        <span class="lbl">Campaign Hypothesis 09</span>
+        <h3>Cart Progress Bar</h3>
+        <p class="hy">—</p>
+        <div class="metrics">
+          <div><b>+5.02%</b><span>Purchase revenue lift</span></div>
+        </div>
+      </div>
+      <div class="screen">
+        <figure class="canvas">
+          <img loading="lazy" decoding="async" src="assets/case-studies/gnc-08.jpg" alt="Cart header with a Get Free Delivery progress bar showing how much more to add, a 1 of 3 milestone counter, and a Swap and Save panel offering a larger pack at a better rate.">
+          <span class="pin" style="top:23%">1</span>
+          <span class="pin" style="top:70%">2</span>
+        </figure>
+        <div class="ann"><ol>
+          <li><div><b>A named threshold, and three of them</b><span>“By adding items worth ₹240” gives the bar a reason and a number, and the 1 / 3 counter means the cart keeps offering a next step after free delivery is reached.</span></div></li>
+          <li><div><b>Swap, don't just add</b><span>Swap &amp; Save moves the same buyer to a 2kg pack — value growth that fits the monthly restock pattern instead of fighting it.</span></div></li>
+        </ol></div>
+      </div>
+    </div>
+
+    <div class="hyp">
+      <div class="hyp-head">
+        <span class="lbl">Campaign Hypothesis 10</span>
+        <h3>New Cart Upsell UI</h3>
+        <p class="hy">Fix smart recommendations in the cart.</p>
+        <div class="metrics">
+          <div><b>+3.84%</b><span>Purchase revenue lift</span></div>
+          <div><b>6.2%</b><span>AOV lift</span></div>
+        </div>
+      </div>
+      <div class="screen">
+        <figure class="canvas">
+          <img loading="lazy" decoding="async" src="assets/case-studies/gnc-09.jpg" alt="Muscle Building Starter Pack recommended inside the cart, listing whey protein, creatine and a multivitamin with a bundle price, percentage saved and an Add Bundle button.">
+          <span class="pin" style="top:11%">1</span>
+          <span class="pin" style="top:42%">2</span>
+          <span class="pin" style="top:80%">3</span>
+        </figure>
+        <div class="ann"><ol>
+          <li><div><b>A named goal, not “you may also like”</b><span>Muscle Building Starter Pack states the outcome, giving the uncoached buyer the framework they lack.</span></div></li>
+          <li><div><b>The pairings buyers already make</b><span>Protein + Creatine + Multivitamin — the instinctive combinations the interviews surfaced, not an algorithmic guess.</span></div></li>
+          <li><div><b>Saving in both currencies</b><span>54% off and “You save ₹2,298” together, with one Add Bundle action instead of three decisions.</span></div></li>
+        </ol></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="divider"><span class="n">08 / Workflow &amp; Tools</span><span class="ln"></span></div>
+    <div class="two">
+      <div>
+        <h3>Synthesizing with Speed</h3>
+        <p class="measure" style="color:var(--muted)">By leveraging Claude and FigJam AI, we clustered hundreds of disjointed raw user call notes in minutes. This let us stress-test assumptions, align the cross-functional squad, and formulate high-confidence experiment specs rapidly.</p>
+      </div>
+      <div>
+        <p class="split-lbl">Time spent distribution</p>
+        <div class="bars">
+          <div><div class="bar-row"><span>Brainstorming</span><b>30%</b></div><div class="bar-track"><div class="bar-fill" style="width:30%"></div></div></div>
+          <div><div class="bar-row"><span>PRD Writing</span><b>25%</b></div><div class="bar-track"><div class="bar-fill" style="width:25%"></div></div></div>
+          <div><div class="bar-row"><span>Prototyping with AI</span><b>20%</b></div><div class="bar-track"><div class="bar-fill" style="width:20%"></div></div></div>
+          <div><div class="bar-row"><span>Design Fixes</span><b>25%</b></div><div class="bar-track"><div class="bar-fill" style="width:25%"></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<footer><div class="wrap">Saathvika Jali — Case Study · GNC India</div></footer>
+</article>
+</div>
+
+<div class="view" data-view="bella" hidden>
+<article class="cs cs-bella">
+
+<header class="hero">
+  <div class="wrap">
+    <h1>How do you buy a perfume <em>you can’t smell?</em></h1>
+    <p class="deck">A research-led PDP redesign that translated in-store selling cues into a digital scent experience — solving discovery, trust and longevity objections for a fragrance brand whose buyers can't smell before they buy.</p>
+    <dl class="meta-foot">
+      <div><dt>Role</dt><dd>Product Designer</dd></div>
+      <div><dt>Category</dt><dd>PDP Redesign &amp; Design System</dd></div>
+      <div><dt>Domain</dt><dd>Fragrance &amp; Beauty</dd></div>
+      <div><dt>Tools</dt><dd class="tags"><span>Figma</span><span>Figma Make</span></dd></div>
+    </dl>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="divider"><span class="n">01 / Process</span><span class="ln"></span></div>
+    <div class="timeline">
+      <div class="tstep">User research</div>
+      <div class="tstep">In-store conversations &amp; observation</div>
+      <div class="tstep">Synthesis</div>
+      <div class="tstep">Actionables</div>
+      <div class="tstep">New PDP</div>
+      <div class="tstep">Design system</div>
+      <div class="tstep">Template rollout</div>
+    </div>
+  </div>
+</section>
+
+<section class="tint">
+  <div class="wrap">
+    <div class="divider"><span class="n">02 / User Research &amp; In-Store</span><span class="ln"></span></div>
+    <div class="two">
+      <div>
+        <h3>User Research</h3>
+        <p>User research with Bellavita buyers on discovery, trust, pricing and gifting behaviour. We wanted to locate exactly how digital and physical signals guide a choice.</p>
+      </div>
+      <div>
+        <h3>In-Store Observations</h3>
+        <p>In-store conversations and observation, including how store staff sell, handle hesitation, translate notes visually, and resolve price objections.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="divider"><span class="n">03 / Field Discoveries</span><span class="ln"></span></div>
+    <div class="board">
+      <div class="card">
+        <h3>Pain Points</h3>
+        <ul>
+          <li>“Not long lasting” is the single most common complaint — and long-lasting is also the main reason people buy. It directly hurts repeat rate.</li>
+          <li>A minority tolerate lower longevity because of the price trade-off.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Pricing &amp; Discovery</h3>
+        <ul>
+          <li>Most purchases fall between ₹500–₹1,200. Users are discount buyers.</li>
+          <li>Users test offline, buy online for the best price. Discovery happens primarily offline — Zara, Westside, mall kiosks.</li>
+          <li>Strong aspiration for premium perfume at an affordable price.</li>
+          <li>Most users have no go-to brand. They are switchers.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Trust &amp; Influence</h3>
+        <ul>
+          <li>Word of mouth from friends and sisters is the most trusted recommendation source.</li>
+          <li>Users don't understand notes — top, heart, base are hidden under “read more” — so they fall back on reviews.</li>
+          <li>Fraud calls are a live problem. Bellavita educates users about the scam over WhatsApp, but not on the PDP.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Scent Language</h3>
+        <ul>
+          <li>Users describe scent emotionally and visually: “sky,” “ocean,” “smell of rain,” “aquatic.”</li>
+          <li>Language is gender-coded: “girly,” “manly.”</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Risk Mitigation</h3>
+        <ul>
+          <li>Users buy gift sets or testers rather than committing to a full size.</li>
+          <li>Reputation is at stake — people only recommend perfume they've personally used and liked.</li>
+          <li>Budget for an untested product is around ₹500.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="tint">
+  <div class="wrap">
+    <div class="divider"><span class="n">04 / In-Store Behaviours</span><span class="ln"></span></div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Store segment type</th><th>In-store behaviour</th><th>Online equivalent UX</th></tr></thead>
+        <tbody>
+          <tr><td>High intent</td><td>Asks for a refill or a specific brand</td><td>Fast reordering, easy transaction</td></tr>
+          <tr><td>Segmentation-led</td><td>Asks by feel — girly, manly, floral, strong, bold</td><td>Tag and filter in user language</td></tr>
+          <tr><td>Exploratory</td><td>Doesn't know what they want, or is shopping for someone else</td><td>Fragrance finder / quiz</td></tr>
+          <tr><td>Gifter</td><td>Wants gift boxes and collections</td><td>Gift sets</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="two" style="margin-top:2.25rem">
+      <div class="panel">
+        <h3>In-Store Buying Cues</h3>
+        <ul>
+          <li>Visual (bottles and displays) trigger sensory associations.</li>
+          <li>Blue packaging maps directly to aquatic/fresh perceptions.</li>
+          <li>Multi-phase scent development journey is tested live on skin.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>What the Staff Actually Do</h3>
+        <ul>
+          <li><strong>Interpret:</strong> knows a blue perfume means aquatic and maps choices instantly.</li>
+          <li><strong>Read non-verbal cues:</strong> recommends alternatives based on facial reactions.</li>
+          <li><strong>Educate:</strong> explains top, mid, and base notes directly as they settle.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="divider"><span class="n">05 / UX Interventions</span><span class="ln"></span></div>
+    <div class="acts">
+      <div class="act"><h3>Fix the longevity trap</h3><p>Remove explicit hour claims. Shift listing images, description and review prompts to other sensory attributes — energising, magnetic, bold.</p></div>
+      <div class="act"><h3>Visualize the smell</h3><p>Visuals that explain scent development, show how the notes unfold and what the perfume feels like. Imagery for listing images and A+ content focused on the feel of the perfume.</p></div>
+      <div class="act"><h3>Speak the user's language</h3><p>Fix search to match native user vocabulary. Standardise nomenclature. Create a “Find Your Fragrance” interactive choice quiz.</p></div>
+      <div class="act"><h3>Rebuild trust</h3><p>A structured trust program that turns reviews, safety, and education into visible proof points customers can act on.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="tint">
+  <div class="wrap">
+    <div class="divider"><span class="n">06 / What We Built: New PDP</span><span class="ln"></span></div>
+
+    <div class="screen">
+      <figure class="canvas">
+        <img loading="lazy" decoding="async" src="assets/case-studies/bella-01.png" alt="Redesigned Bellavita PDP first fold for CEO Man Perfume, showing the product name, storytelling subtitle, rating, price block and a sticky add-to-cart bar.">
+        <span class="pin" style="top:63.7%">1</span>
+        <span class="pin" style="top:67.1%">2</span>
+        <span class="pin" style="top:71.6%">3</span>
+        <span class="pin" style="top:90.5%">4</span>
+      </figure>
+      <div class="ann">
+        <p class="sub">Screen 01</p>
+        <h3>First fold</h3>
+        <ol>
+          <li><div><b>Benefit, not hours</b><span>“Confidence that stays with you all day” carries longevity as a feeling. No hour count, so no promise the bottle can fail against.</span></div></li>
+          <li><div><b>Reviews before price</b><span>4.9 and 513 reviews sit above the number — the fallback buyers reach for when they can't read notes.</span></div></li>
+          <li><div><b>Never a no-offer state</b><span>MRP, slashed price and percentage saved together. A card with no visible offer reads as the wrong time to buy.</span></div></li>
+          <li><div><b>Best price, made explicit</b><span>The ₹549 best-offer price and a persistent “Saving ₹300” bar answer the value-max cue from the store floor.</span></div></li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="screen">
+      <figure class="canvas wide">
+        <img loading="lazy" decoding="async" src="assets/case-studies/bella-02.png" alt="The Scent Journey section with Top, Heart and Base Notes tabs, an explainer line, photographic ingredient cards for Lavender and Lemon with feeling words, and a Where To Wear It occasion grid.">
+        <span class="pin" style="top:15.4%">1</span>
+        <span class="pin" style="top:22.2%">2</span>
+        <span class="pin" style="top:57.8%">3</span>
+        <span class="pin" style="top:80.5%">4</span>
+      </figure>
+      <div class="ann">
+        <p class="sub">Screen 02</p>
+        <h3>The Scent Journey</h3>
+        <ol>
+          <li><div><b>The journey, made navigable</b><span>Top, heart and base become three steps instead of three words buried under “read more.”</span></div></li>
+          <li><div><b>Plain language first</b><span>“Top notes are the first notes you'll smell.” The education the store staff give, written into the page.</span></div></li>
+          <li><div><b>Ingredient → feeling</b><span>Each note gets a photograph and three feeling-words. Lavender reads calm, timeless, elegant. That's the interpreter's job as a component.</span></div></li>
+          <li><div><b>Occasion, not gender</b><span>Six occasions replace the girly/manly shorthand buyers use when nothing better is offered.</span></div></li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="screen">
+      <figure class="canvas wide">
+        <img loading="lazy" decoding="async" src="assets/case-studies/bella-03.png" alt="Better Together Combos section pairing White Oud Unisex Perfume with CEO Man Perfume, both marked Musky, at ₹998 instead of ₹1,200 with a 54 percent saving and an Add Combo button.">
+        <span class="pin" style="top:37.6%">1</span>
+        <span class="pin" style="top:76.5%">2</span>
+        <span class="pin in" style="top:80.5%; left:50.5%">3</span>
+      </figure>
+      <div class="ann">
+        <p class="sub">Screen 03</p>
+        <h3>Better Together Combos</h3>
+        <ol>
+          <li><div><b>Paired by scent family</b><span>Both items carry “Musky,” so the bundle reads as a scent decision rather than a discount coincidence.</span></div></li>
+          <li><div><b>Still inside the band</b><span>₹998 for two keeps a doubled basket inside the ₹500–₹1,200 window, with the saving shown as a percentage and in rupees.</span></div></li>
+          <li><div><b>One tap</b><span>Add Combo commits the pair without asking a switcher to build it themselves.</span></div></li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="tw" style="margin-top:2.25rem">
+      <table>
+        <thead><tr><th>Redesigned PDP element</th><th>User motivation answered</th></tr></thead>
+        <tbody>
+          <tr><td>Optimised first fold &amp; storytelling subtitle</td><td>Emotional scent language; standardised nomenclature</td></tr>
+          <tr><td>Listing images mixing product &amp; notes</td><td>Visual cues drive decisions; users need a feel, not a spec</td></tr>
+          <tr><td>Price block featuring Bellacash</td><td>₹500–1,200 discount buyers; “value max” cue from store</td></tr>
+          <tr><td>Visual notes section</td><td>Users don't understand notes; notes were buried; staff educate</td></tr>
+          <tr><td>Walls of text removed</td><td>Notes and details were unreadable previously</td></tr>
+          <tr><td>Curated Bundle section</td><td>Value-deal buyers; bundles already perform strongly</td></tr>
+          <tr><td>Brand USPs</td><td>Trust gap; premium-at-affordable aspiration</td></tr>
+          <tr><td>“Where to wear it” widgets</td><td>Occasion-based buying; gifting; girly/manly framing</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="callout">“The PDP is the interpreter. It translates visual cues into scent language, explains the notes, and shows the scent journey — the three jobs the store staff were doing manually.”</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="divider"><span class="n">07 / What It Became</span><span class="ln"></span></div>
+    <p class="became">A unified template system.</p>
+    <p class="measure">The PDP introduced new fonts and colours, which became Bellavita's design system. That system is now the base for the redesign of the remaining pages, and the PDP itself is the base template for skincare and cosmetics.</p>
+  </div>
+</section>
+
+<footer><div class="wrap">Saathvika Jali — Case Study · Bellavita</div></footer>
+</article>
+</div>
+
   </div>
 </main>
 
@@ -1359,6 +2280,87 @@
     folder.addEventListener('pointerenter', settle, { once: true });
     folder.addEventListener('focus', settle, { once: true });
   }
+
+
+  /* ---- case studies open in place; the backdrop and binder never leave ---- */
+  var views = {};
+  document.querySelectorAll('.view').forEach(function (v) { views[v.getAttribute('data-view')] = v; });
+  var noMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var topback = document.querySelector('.topback');
+
+  /* ---- a pin and its description are one control ---- */
+  document.querySelectorAll('.screen').forEach(function (screen) {
+    var pins = [].slice.call(screen.querySelectorAll('.pin'));
+    var notes = [].slice.call(screen.querySelectorAll('.ann li'));
+    if (!pins.length || !notes.length) return;
+
+    function pair(i) { return [pins[i], notes[i]].filter(Boolean); }
+    function mark(i, cls, on) { pair(i).forEach(function (el) { el.classList.toggle(cls, on); }); }
+
+    function select(i) {
+      var already = notes[i] && notes[i].classList.contains('is-active');
+      pins.concat(notes).forEach(function (el) { el.classList.remove('is-active'); });
+      if (!already) mark(i, 'is-active', true);
+    }
+
+    /* each list is indexed on its own — pin 3 pairs with note 3 */
+    [pins, notes].forEach(function (list) {
+      list.forEach(function (el, i) {
+        el.addEventListener('mouseenter', function () { mark(i, 'is-hot', true); });
+        el.addEventListener('mouseleave', function () { mark(i, 'is-hot', false); });
+        el.addEventListener('click', function () { select(i); });
+        el.addEventListener('focus', function () { mark(i, 'is-hot', true); });
+        el.addEventListener('blur', function () { mark(i, 'is-hot', false); });
+        el.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(i); }
+        });
+        el.setAttribute('tabindex', '0');
+        el.setAttribute('role', 'button');
+        el.setAttribute('aria-label', 'Annotation ' + (i + 1));
+      });
+    });
+  });
+
+  /* a selection is about the screenshot you're looking at — scrolling away drops it */
+  sheet.addEventListener('scroll', function () {
+    var on = document.querySelectorAll('.is-active');
+    for (var i = 0; i < on.length; i++) on[i].classList.remove('is-active');
+  }, { passive: true });
+
+  function showView(name) {
+    if (!views[name]) name = 'home';
+    Object.keys(views).forEach(function (k) {
+      var el = views[k];
+      if (k === name) {
+        el.hidden = false;
+        el.classList.remove('is-entering');
+        if (!noMotion) { void el.offsetWidth; el.classList.add('is-entering'); }
+      } else {
+        el.hidden = true;
+      }
+    });
+    sheet.scrollTop = 0;
+    if (topback) topback.hidden = (name === 'home');
+    document.title = name === 'home' ? HOME_TITLE
+      : (views[name].querySelector('h1') || {}).textContent + ' — Saathvika';
+  }
+
+  var HOME_TITLE = document.title;
+  function route() { showView((location.hash || '').replace('#', '')); }
+
+  document.querySelectorAll('.wa-card[data-case]').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      location.hash = a.getAttribute('data-case');
+    });
+  });
+  document.querySelectorAll('[data-back]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (history.length > 1) { history.back(); } else { location.hash = ''; }
+    });
+  });
+  window.addEventListener('hashchange', route);
+  route();
 
   /* tabs — the resume link navigates away, so it isn't part of the selection */
   document.querySelectorAll('.tab:not(.tab-out)').forEach(function (b) {
