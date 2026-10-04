@@ -34,6 +34,9 @@
     --top:  clamp(70px, 9vh, 98px);
     --punch: clamp(40px, 4.6vw, 60px);
     --sheet-px: clamp(1rem, 3vw, 2.5rem);   /* sheet's horizontal padding */
+    --sec-gap: clamp(2.6rem, 6vh, 4.3rem);  /* the only vertical rhythm between sections */
+    --rail: 14px;                           /* right strip the overlay scrollbar lives in */
+    --bg-blur: 0px;
   }
 
   * { box-sizing: border-box; }
@@ -41,7 +44,7 @@
   body { font-family: var(--grot); color: var(--ink); background: #C9CFC4; }
 
   /* ============ static painting behind the binder ============ */
-  .paint, .paint-img {
+  .paint-img {
     position: fixed;
     inset: 0;
     width: 100%;
@@ -54,27 +57,14 @@
   }
   .paint-img { object-fit: cover; opacity: 0; transition: opacity .5s ease; }
   .paint-img.ok { opacity: 1; }
+  /* the artwork ships pre-blurred, so --bg-blur stays 0 */
   .paint-veil {
     position: fixed;
     inset: 0;
     background:
       radial-gradient(120% 80% at 50% 0%, rgba(255,252,244,.16), transparent 60%),
       linear-gradient(180deg, rgba(40,50,35,.10), rgba(40,50,35,0) 30%);
-    /* TEMP: tap the background to cycle artwork */
-    cursor: pointer;
   }
-
-  /* TEMP — background switcher readout */
-  .bg-readout {
-    position: fixed; z-index: 8; left: 50%; translate: -50% 0; bottom: 18px;
-    display: flex; align-items: center; gap: .55rem;
-    background: rgba(26,24,18,.8); color: #FCFAF4;
-    font-family: var(--mono); font-size: .64rem; letter-spacing: .1em; text-transform: uppercase;
-    padding: .5rem .85rem; border-radius: 999px;
-    opacity: 0; transition: opacity .3s ease; pointer-events: none;
-  }
-  .bg-readout.show { opacity: 1; }
-  .bg-readout i { font-style: normal; opacity: .5; font-variant-numeric: tabular-nums; }
 
   /* ============ static top bar: tabs ============ */
   .topbar {
@@ -114,11 +104,34 @@
   .topback:hover svg { transform: translateX(-3px); }
   .topback:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 
+  /* on a phone the tabs take the whole bar, so the back control moves onto the
+     paper instead of fighting them for the same row */
+  .csback {
+    display: none;
+    margin: 0 0 1.4rem; align-items: center; gap: .45rem;
+    font-family: var(--grot); font-size: .84rem;
+    color: var(--ink); background: var(--paper-2);
+    border: 0; border-radius: 5px; cursor: pointer;
+    padding: .55rem .9rem .6rem;
+    box-shadow: 0 1px 2px rgba(42,38,28,.10), 0 5px 14px rgba(42,38,28,.10);
+  }
+  .csback svg {
+    width: 15px; height: 15px; fill: none; stroke: currentColor;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  }
+  .csback:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+  @media (max-width: 700px) {
+    .topback { display: none; }
+    .csback  { display: inline-flex; }
+  }
+
   .tabs { display: flex; align-items: flex-end; gap: 4px; }
   .tab {
-    font-family: var(--mono);
-    font-size: clamp(.8rem, 1.6vw, .95rem);
-    letter-spacing: .005em;
+    /* the page's own sans, not a one-off monospace */
+    font-family: var(--grot);
+    font-size: clamp(.82rem, 1.6vw, .96rem);
+    font-weight: 500;
+    letter-spacing: .01em;
     color: #6B6455;
     background: var(--tab-1);
     border: 0;
@@ -173,6 +186,24 @@
       0 64px 128px rgba(38, 34, 24, .15);
   }
 
+  /* depth inside each hole. This lives on the shadow layer, BEHIND the paper, so
+     only the part framed by a cutout is ever seen — no ring drawn over the sheet.
+     Clear in the middle, darkening towards the rim, nudged down so the light
+     still reads as coming from above. */
+  .page-shadow::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle 8px at calc(var(--punch) / 2) 47px,
+        rgba(44, 36, 24, 0) 0 3.2px,
+        rgba(44, 36, 24, .10) 5.6px,
+        rgba(44, 36, 24, .22) 7.2px,
+        rgba(44, 36, 24, 0) 8.4px)
+      0 0 / 100% 92px repeat-y;
+  }
+
   /* ============ static page: punched, dot-gridded, to the bottom edge ============ */
   .page {
     position: fixed;
@@ -200,6 +231,27 @@
     pointer-events: none;
     z-index: 0;
   }
+  /* ============ an overlay scrollbar: visible, but costs no layout width ============ */
+  .srail {
+    position: absolute;
+    top: 16px; right: 6px; bottom: 16px;
+    width: 6px; z-index: 4;
+    border-radius: 99px;
+    background: rgba(84, 70, 48, .07);
+    opacity: 0;
+    transition: opacity .25s ease;
+  }
+  .page:hover .srail, .srail.is-live { opacity: 1; }
+  .sthumb {
+    position: absolute; left: 0; right: 0;
+    min-height: 30px;
+    border-radius: 99px;
+    background: #C6BBA2;
+    cursor: grab;
+  }
+  .sthumb:hover { background: #B3A88E; }
+  .srail.is-dragging .sthumb { cursor: grabbing; background: #A89C81; }
+
   /* ============ the only scrolling region ============ */
   .sheet {
     position: absolute;
@@ -207,19 +259,24 @@
     overflow-y: auto;
     overflow-x: hidden;
     z-index: 2;
-    padding: calc(clamp(1.6rem, 4vh, 2.8rem) + 24px) var(--sheet-px)
+    padding: calc(clamp(1.6rem, 4vh, 2.8rem) + 24px) calc(var(--sheet-px) + var(--rail))
              clamp(3rem, 12vh, 6rem) calc(var(--punch) + var(--sheet-px));
-    scrollbar-width: thin;
-    scrollbar-color: #CFC5AE transparent;
+    /* no scrollbar: it takes 11px of layout width out of the sheet, and nothing
+       can paint there — which left a strip of bare paper beside the full-bleed
+       cover. Wheel, touch and keyboard scrolling are unaffected. */
+    scrollbar-width: none;
     /* content fades into the page edge instead of being sliced mid-glyph */
     -webkit-mask: linear-gradient(to bottom, transparent 0, #000 22px);
     mask: linear-gradient(to bottom, transparent 0, #000 22px);
   }
-  .sheet::-webkit-scrollbar { width: 9px; }
-  .sheet::-webkit-scrollbar-thumb { background: #CFC5AE; border-radius: 9px; }
-  .sheet::-webkit-scrollbar-track { background: transparent; }
+  .sheet::-webkit-scrollbar { width: 0; height: 0; }
+  /* a case study opens with a full-bleed cover against the paper's top edge —
+     the fade would thin it out and show the dot grid through it */
+  .sheet.is-case { -webkit-mask: none; mask: none; }
 
-  .col { max-width: 660px; display: flex; flex-direction: column; gap: clamp(2rem, 5vh, 3.2rem); }
+  /* ONE gap between sections. Previously .col's gap and each section's own
+     margin-top stacked, which ran to ~147px between bands on a tall screen. */
+  .col { max-width: 660px; display: flex; flex-direction: column; gap: var(--sec-gap); }
 
   /* ---- Desk objects ---- */
   .lede {
@@ -381,39 +438,78 @@
   .hv:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
   .hv-thumb {
     display: block; width: 100%; aspect-ratio: 16 / 10;
-    background: var(--clay); border-radius: 2px;
+    background: url("assets/summary-poster.jpg") center / cover no-repeat, var(--clay);
+    border-radius: 2px;
   }
   .hv .play {
-    position: absolute; inset: 0; margin: auto; width: 58px; height: 58px;
-    border-radius: 50%; background: var(--blue); display: grid; place-items: center;
-    box-shadow: 0 4px 14px rgba(30, 40, 110, .28);
+    position: absolute; top: 50%; left: 50%; translate: -50% -50%;
+    width: 60px; height: 60px;
+    border-radius: 50%; background: rgba(16, 13, 8, .46); display: grid; place-items: center;
+    backdrop-filter: blur(2px);
+    box-shadow: 0 4px 14px rgba(20, 16, 8, .22);
     transition: transform .2s cubic-bezier(.2,.8,.3,1), background .18s ease;
   }
-  .hv .play svg { width: 25px; height: 25px; fill: #F7F5EE; }
-  .hv:hover .play, .hv:focus-visible .play { transform: scale(1.12); background: #24379B; }
+  .hv .play svg { width: 26px; height: 26px; fill: #FFFFFF; }
+  .hv:hover .play, .hv:focus-visible .play { transform: scale(1.1); background: rgba(16, 13, 8, .62); }
+  .hv .play, .hv .dur { z-index: 2; }
   .hv .dur {
-    position: absolute; right: 20px; bottom: 20px;
+    position: absolute; left: 20px; bottom: 20px;
     background: rgba(255,253,248,.92); color: #7C5545;
     font-family: var(--mono); font-size: .62rem; padding: .18rem .38rem; border-radius: 2px;
   }
 
+
+  /* ---- once the column narrows the 16:10 card goes short and wide. Squaring it
+     up gives the still back some height without changing the layout. ---- */
+  @media (max-width: 1150px) {
+    .hv-thumb { aspect-ratio: 4 / 3; }
+  }
+
   @media (max-width: 900px) {
+    /* once the hero stacks, it reads as one centred column */
     .hero { grid-template-columns: 1fr; gap: 2.4rem; }
-    .hero-right { padding: .5rem .25rem 1rem; }
-    .hv .play { width: 50px; height: 50px; }
-    .hv .play svg { width: 22px; height: 22px; }
+    .hero-left { align-items: center; text-align: center; }
+    .brandwall, .cta, .hero-meta { justify-content: center; text-align: center; }
+    .hero-right { padding: .5rem .25rem 1rem; width: 100%; max-width: 460px; margin-inline: auto; }
+    .hv .play { width: 54px; height: 54px; }
+    .hv .play svg { width: 23px; height: 23px; }
+  }
+
+
+  /* ---- muted preview that plays while the pointer rests on the card ---- */
+  .vprev {
+    position: absolute; inset: 0; z-index: 1;
+    overflow: hidden; border-radius: 3px;
+    opacity: 0; transition: opacity .45s ease;
+    pointer-events: none;
+  }
+  .is-previewing .vprev { opacity: 1; }
+  /* while the clip plays the card is just the video — no badge, no timestamp */
+  .hv .play, .hv .dur, .vid .play, .vid .dur { transition: opacity .25s ease, transform .2s cubic-bezier(.2,.8,.3,1), background .18s ease; }
+  .is-previewing .play, .is-previewing .dur { opacity: 0; }
+  /* the hero card is a paper mount with 10px of white around the still, so the
+     preview has to sit inside that frame rather than over it */
+  .hv .vprev { inset: 10px; border-radius: 2px; }
+  /* a plain <video>: nothing to hide, so it sits at true cover with no overscan */
+  .vprev video {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block; pointer-events: none;
   }
 
   /* ================= WORK — shared ================= */
-  .work-sec { margin-top: clamp(3.5rem, 9vh, 6rem); }
+  .work-sec { margin-top: 0; }
   .plate { border-radius: 2px; display: block; }
+  /* a case-study thumbnail in place of the flat colour plate */
+  .plate.img { background: var(--plate-img) center / cover no-repeat, var(--paper-2); }
   .p-sage  { background: #CFDCBC; }
   .p-butter{ background: #EFDCA8; }
   .p-clay  { background: #E7D2C6; }
   .p-sky   { background: #CEDCE6; }
 
   /* ---------- CONCEPT A — pinned cards ---------- */
-  .wa-head { display: flex; align-items: flex-end; gap: .9rem; margin-bottom: 1.9rem; }
+  .wa-head { display: flex; align-items: flex-end; gap: .9rem; margin-bottom: clamp(1.15rem, 2.4vh, 1.6rem); }
   .wa-head h2 {
     font-family: var(--serif); font-size: clamp(1.5rem, 3vw, 2.05rem);
     font-weight: 400; letter-spacing: -.018em; margin: 0; color: var(--ink);
@@ -454,38 +550,118 @@
   .wa-cta svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.9; transition: transform .18s ease; }
   .wa-card:hover .wa-cta svg { transform: translateX(3px); }
 
-  /* small viewports: the projects become a horizontal filmstrip rather than
-     wrapping to a 2-up grid, so a long question heading gets a full card width */
+  /* not-yet-published card: keeps the card's shape, drops every affordance */
+  .wa-card.is-soon { cursor: default; }
+  .wa-card.is-soon:hover { transform: rotate(-.7deg) translateY(0); }
+  .wa-soon {
+    margin-top: auto; padding-top: .55rem;
+    font-family: var(--mono); font-size: .62rem;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  .wa-soon::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ink-3); opacity: .5;
+  }
+
+  /* small viewports: one project per row, stacked. A long question heading then
+     gets the full card width without the reader having to scroll sideways. */
   @media (max-width: 620px) {
     .wa-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.15rem;
+      padding: 10px 6px 14px;
+      overflow: visible;
+    }
+    .wa-card { min-width: 0; }
+  }
+
+
+  /* ---- from 880px up the projects are always a carousel, never a 4-up row:
+     two whole cards and half of the next, so there is always more to reach for.
+     Below 880px the 2-up grid is left alone. ---- */
+  .wa-next { display: none; }
+  @media (min-width: 880px) {
+    .wa-grid {
+      --wa-gap: 1.15rem;
       display: flex;
       grid-template-columns: none;
-      gap: .9rem;
+      gap: var(--wa-gap);
       overflow-x: auto;
       overscroll-behavior-x: contain;
-      scroll-snap-type: x proximity;
-      /* clearance so the cards' rotation isn't sliced by the scroll container */
-      padding: 10px 6px 14px;
-      scrollbar-width: thin;
-      scrollbar-color: #CFC5AE transparent;
+      scroll-snap-type: x mandatory;
+      /* room for the cards' rotation and shadow inside the scroll box */
+      padding: 12px 2px 18px;
+      margin-block: -12px -18px;
+      /* run out to both paper edges: a band of dead paper beside a carousel
+         reads as a mistake, not as "there's more". The rail keeps its 14px on
+         the right; on the left the track stops just clear of the punch holes. */
+      /* clearance measured from the paper's edges: ~40px on the right, and on the
+         left ~74px, which is the same ~37px clear of the punch holes once the
+         hole strip is accounted for — so the two ends read as balanced. */
+      margin-right: calc(-1 * var(--rail));
+      margin-left: calc(44px - var(--punch) / 2 - var(--sheet-px));
+
+      /* a cut card fades out rather than meeting a hard vertical line. The two
+         ramps are driven from JS so an edge with nothing scrolled past it stays
+         crisp — a fade on a card that is already whole just looks like a bug. */
+      --fade-l: 0px;
+      --fade-r: 0px;
+      -webkit-mask: linear-gradient(to right,
+        transparent 0, #000 var(--fade-l),
+        #000 calc(100% - var(--fade-r)), transparent 100%);
+      mask: linear-gradient(to right,
+        transparent 0, #000 var(--fade-l),
+        #000 calc(100% - var(--fade-r)), transparent 100%);
+      scrollbar-width: none; -ms-overflow-style: none;
+      cursor: grab;
     }
-    .wa-grid::-webkit-scrollbar { height: 6px; }
-    .wa-grid::-webkit-scrollbar-thumb { background: #CFC5AE; border-radius: 6px; }
-    .wa-grid::-webkit-scrollbar-track { background: transparent; }
-    .wa-card { flex: 0 0 70%; min-width: 0; scroll-snap-align: start; }
+    .wa-grid::-webkit-scrollbar { display: none; }
+    .wa-grid.is-dragging { cursor: grabbing; scroll-snap-type: none; }
+    .wa-grid > .wa-card {
+      /* 2.5 across: two whole cards and half of the next */
+      flex: 0 0 calc((100% - 2 * var(--wa-gap)) / 2.5);
+      min-width: 0;
+      scroll-snap-align: start;
+    }
+    /* without this, mandatory snapping refuses the final scroll position and
+       leaves the last card clipped halfway */
+    .wa-grid > .wa-card:last-child { scroll-snap-align: end; }
+
+    .wa-next {
+      display: grid; place-items: center;
+      margin-left: auto; margin-bottom: .2rem;
+      width: 34px; height: 34px; padding: 0;
+      border: 0; border-radius: 50%;
+      background: var(--paper-2);
+      box-shadow: 0 0 0 1px rgba(60,48,30,.16), 0 2px 6px rgba(42,38,28,.10);
+      color: var(--blue); cursor: pointer;
+      transition: transform .16s ease, opacity .2s ease, box-shadow .16s ease;
+    }
+    .wa-next svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .wa-next:hover { transform: translateX(2px); box-shadow: 0 0 0 1px rgba(60,48,30,.24), 0 4px 10px rgba(42,38,28,.14); }
+    .wa-next:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+    .wa-next[disabled] { opacity: .3; pointer-events: none; }
   }
 
   /* ================= WORKED AT ================= */
   .worked-h {
     font-family: var(--serif); font-weight: 400;
     font-size: clamp(1.4rem, 2.9vw, 1.95rem);
-    letter-spacing: -.016em; margin: 0 0 .5rem; color: var(--ink);
+    letter-spacing: -.016em; margin: 0 0 clamp(1.15rem, 2.4vh, 1.6rem); color: var(--ink);
   }
 
   /* padding-top reserves the room the Guardian folder bursts into. It has to be
      padding on the scroll container, not margin: below 860px this element is
      overflow-x:auto, which makes overflow-y clip anything outside its padding box. */
-  .worked-row { display: flex; align-items: flex-start; gap: clamp(1.2rem, 3vw, 2.6rem); padding-top: 100px; }
+  /* no reserved gap: the Guardian burst rises over the heading, which fades
+     out of the way on hover, so this section matches the others' rhythm */
+  .worked-row { display: flex; align-items: flex-start; gap: clamp(1.2rem, 3vw, 2.6rem); padding-top: 0; }
+  .worked-h { transition: opacity .22s ease; }
+  .work-sec:has(.co-folder:hover) .worked-h,
+  .work-sec:has(.co-folder:focus-within) .worked-h { opacity: .16; }
+  .brands { z-index: 8; }
   .worked-track {
     position: relative; display: flex; gap: clamp(1.1rem, 3.2vw, 2.9rem);
     flex: none; padding-right: .3rem;
@@ -497,7 +673,13 @@
     border-top: 2px dotted rgba(84, 70, 48, .28);
   }
 
-  .co { position: relative; z-index: 1; display: flex; flex-direction: column; gap: .55rem; }
+  /* fixed column width: without it the flex gap sits between column EDGES, and
+     columns are sized by their label text, so the tiles end up unevenly spaced
+     (measured 106 / 131 / 150 / 151px centre-to-centre before this) */
+  .co {
+    position: relative; z-index: 1; display: flex; flex-direction: column; gap: .55rem;
+    width: var(--co-col, 112px); flex: none;
+  }
   .co-tile {
     width: 64px; height: 64px; border-radius: 17px;
     display: grid; place-items: center;
@@ -570,34 +752,50 @@
     max-width: 100%; max-height: 100%;
     width: auto; height: auto; object-fit: contain; display: block;
   }
+  /* some marks are already a filled square with their own corners — those run
+     edge to edge instead of floating on a paper tile */
+  .co-tile.co-logo.is-full {
+    /* the tile takes the mark's own background colour, so the padding reads as
+       part of the logo rather than as a frame around it */
+    padding: 9px;
+    background: var(--logo-bg, var(--paper-2));
+    /* a light mark would otherwise float edgeless on the cream paper */
+    box-shadow: 0 0 0 1px rgba(60, 48, 30, .12);
+    overflow: hidden;
+  }
+  .co-tile.co-logo.is-full img {
+    width: 100%; height: 100%; max-width: none; max-height: none;
+    object-fit: contain;
+  }
 
   .brands { position: absolute; left: 0; top: 0; width: 64px; height: 64px; pointer-events: none; z-index: 2; }
   .br {
     position: absolute; left: 8px; top: 8px;
     display: inline-flex; align-items: center; justify-content: center;
     background: var(--paper-2);
-    padding: .3rem .42rem; border-radius: 999px;
+    padding: .34rem .5rem; border-radius: 999px;
     box-shadow: 0 0 0 1px rgba(60,48,30,.12), 0 4px 11px rgba(42,38,28,.14);
     opacity: 0; transform: translate(0, 0) scale(.6);
     transition: transform .4s cubic-bezier(.2,.9,.3,1.3), opacity .2s ease;
   }
-  .br img { height: 13px; width: auto; max-width: 58px; object-fit: contain; display: block; }
+  .br img { height: 16px; width: auto; max-width: 72px; object-fit: contain; display: block; }
 
   /* the ten brands fan up and to the right. Guardian is the leftmost tile, so
      nothing may travel left of it — below 860px the scroller clips at origin. */
-  /* three rows, 32px apart; columns spaced from the measured chip widths
-     (34–73px) so no two logos collide. Rotation kept small for the same reason. */
+  /* three rows, 40px apart; columns spaced from the measured chip widths
+     (42–90px at this logo size) so no two logos collide. Row and column pitch
+     scale with the chips — enlarging the logos alone makes neighbours overlap. */
   .co-folder:hover .br, .co-folder:focus-within .br { opacity: 1; }
-  .co-folder:hover .br-1,  .co-folder:focus-within .br-1  { transform: translate(0px,   -26px) rotate(-3deg); }
-  .co-folder:hover .br-2,  .co-folder:focus-within .br-2  { transform: translate(82px,  -26px) rotate(2.5deg); }
-  .co-folder:hover .br-3,  .co-folder:focus-within .br-3  { transform: translate(164px, -26px) rotate(-2deg); }
-  .co-folder:hover .br-8,  .co-folder:focus-within .br-8  { transform: translate(-2px,  -58px) rotate(3deg); }
-  .co-folder:hover .br-6,  .co-folder:focus-within .br-6  { transform: translate(82px,  -58px) rotate(-3.5deg); }
-  .co-folder:hover .br-5,  .co-folder:focus-within .br-5  { transform: translate(166px, -58px) rotate(2deg); }
-  .co-folder:hover .br-4,  .co-folder:focus-within .br-4  { transform: translate(240px, -58px) rotate(-2.5deg); }
-  .co-folder:hover .br-10, .co-folder:focus-within .br-10 { transform: translate(18px,  -90px) rotate(2deg); }
-  .co-folder:hover .br-9,  .co-folder:focus-within .br-9  { transform: translate(118px, -90px) rotate(-3deg); }
-  .co-folder:hover .br-7,  .co-folder:focus-within .br-7  { transform: translate(200px, -90px) rotate(3.5deg); }
+  .co-folder:hover .br-1,  .co-folder:focus-within .br-1  { transform: translate(0px, -30px) rotate(-3deg); }
+  .co-folder:hover .br-2,  .co-folder:focus-within .br-2  { transform: translate(102px, -30px) rotate(2.5deg); }
+  .co-folder:hover .br-3,  .co-folder:focus-within .br-3  { transform: translate(204px, -30px) rotate(-2deg); }
+  .co-folder:hover .br-8,  .co-folder:focus-within .br-8  { transform: translate(-2px, -70px) rotate(3deg); }
+  .co-folder:hover .br-6,  .co-folder:focus-within .br-6  { transform: translate(102px, -70px) rotate(-3.5deg); }
+  .co-folder:hover .br-5,  .co-folder:focus-within .br-5  { transform: translate(206px, -70px) rotate(2deg); }
+  .co-folder:hover .br-4,  .co-folder:focus-within .br-4  { transform: translate(300px, -70px) rotate(-2.5deg); }
+  .co-folder:hover .br-10, .co-folder:focus-within .br-10 { transform: translate(22px, -110px) rotate(2deg); }
+  .co-folder:hover .br-9,  .co-folder:focus-within .br-9  { transform: translate(148px, -110px) rotate(-3deg); }
+  .co-folder:hover .br-7,  .co-folder:focus-within .br-7  { transform: translate(250px, -110px) rotate(3.5deg); }
   .br-2 { transition-delay: .03s; }  .br-3 { transition-delay: .06s; }
   .br-4 { transition-delay: .09s; }  .br-5 { transition-delay: .12s; }
   .br-6 { transition-delay: .15s; }  .br-7 { transition-delay: .18s; }
@@ -607,15 +805,64 @@
   @media (max-width: 860px) {
     .worked-row {
       overflow-x: auto; padding-bottom: .6rem;
+      /* overflow-x:auto makes overflow-y clip too, so the burst needs room
+         INSIDE this box. The negative margin gives it back to the layout, so the
+         tiles stay put and the burst still rises over the heading. */
+      padding-top: 150px; margin-top: -150px;
       scrollbar-width: thin; scrollbar-color: #CFC5AE transparent;
     }
     .worked-row::-webkit-scrollbar { height: 6px; }
     .worked-row::-webkit-scrollbar-thumb { background: #CFC5AE; border-radius: 6px; }
   }
 
+
+  /* ---- mobile: the trail runs straight down. Logo on the left, company and
+     dates on the right, with the dotted connector threaded through the tiles. ---- */
+  @media (max-width: 620px) {
+    .worked-row { overflow: visible; padding-bottom: 0; }
+    .worked-track {
+      --zz-row: 30px;
+      --zz-ink: rgba(84, 70, 48, .34);
+      display: flex;
+      flex-direction: column;
+      gap: var(--zz-row);
+      width: 100%;
+      padding-right: 0;
+    }
+    /* the horizontal connector only makes sense in a single row */
+    .worked-track::before { display: none; }
+
+    .worked-track > .co {
+      width: auto; flex: none;
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      column-gap: .95rem;
+      row-gap: 1px;
+      align-items: center;
+      text-align: left;
+    }
+    .worked-track > .co > .co-tile,
+    .worked-track > .co > .fld { grid-column: 1; grid-row: 1 / 3; z-index: 1; }
+    .worked-track .co-name { grid-column: 2; grid-row: 1; align-self: end; }
+    .worked-track .co-yrs  { grid-column: 2; grid-row: 2; align-self: start; }
+    /* the open slot has no date line, so its label centres against the tile */
+    .worked-track .co-you .co-name { grid-row: 1 / 3; align-self: center; }
+
+    /* dotted run from each tile down to the next */
+    .worked-track > .co:not(:last-child)::after {
+      content: ""; position: absolute; z-index: 0;
+      left: 31px; top: 100%; height: var(--zz-row);
+      border-left: 2px dotted var(--zz-ink);
+    }
+
+    /* the Guardian burst still has room to fan up and right from the left column,
+       and tapping the folder focuses it, so the reveal works on touch too */
+    .brands { z-index: 9; }
+  }
+
   /* ================= BENTO ================= */
   .bento {
-    margin-top: clamp(3.5rem, 9vh, 6rem);
+    margin-top: 0;
     display: grid;
     gap: 1.05rem;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -644,6 +891,8 @@
       grid-template-columns: 1fr;
       grid-template-areas: "write" "video" "photos" "resume" "contact" "socials";
     }
+    /* nothing shares this row any more, so the tile has to size itself */
+    .b-video .vid { aspect-ratio: 16 / 10; min-height: 0; flex: none; }
   }
 
   .bx {
@@ -659,7 +908,7 @@
   .bx-note { font-size: .78rem; color: var(--ink-3); line-height: 1.45; }
 
   /* --- writing: a stack of drafts that fans out --- */
-  .wr-stack { position: relative; height: 188px; }
+  .wr-stack { position: relative; height: 206px; }
   .wr-note {
     position: absolute; left: 4%; right: 4%;
     background: var(--paper); border-radius: 4px;
@@ -667,10 +916,10 @@
     padding: .55rem .68rem; font-size: .74rem; line-height: 1.35;
     transition: transform .3s cubic-bezier(.2,.8,.3,1);
   }
-  .wr-note b { display: block; font-family: var(--serif); font-size: .86rem; color: inherit; margin-bottom: .12rem; font-weight: 400; opacity: .95; }
-  .wr-note:nth-child(1) { top: 0;    z-index: 1; transform: rotate(-2.6deg); background: #EFD9A8; color: #6C5416; }
-  .wr-note:nth-child(2) { top: 46px; z-index: 2; transform: rotate(1.6deg);  background: #E7D2C6; color: #77503D; }
-  .wr-note:nth-child(3) { top: 92px; z-index: 3; transform: rotate(-.7deg); background: #D9E4EE; color: #33536A; }
+  .wr-note b { display: block; font-family: var(--serif); font-size: .84rem; line-height: 1.3; color: inherit; margin-bottom: 0; font-weight: 400; opacity: .95; }
+  .wr-note:nth-child(1) { top: 0;     z-index: 1; transform: rotate(-2.6deg); background: #EFD9A8; color: #6C5416; }
+  .wr-note:nth-child(2) { top: 54px;  z-index: 2; transform: rotate(1.6deg);  background: #E7D2C6; color: #77503D; }
+  .wr-note:nth-child(3) { top: 108px; z-index: 3; transform: rotate(-.7deg); background: #D9E4EE; color: #33536A; }
   .b-write:hover .wr-note:nth-child(1) { transform: rotate(-8deg) translate(-13px, -8px); }
   .b-write:hover .wr-note:nth-child(2) { transform: rotate(4.5deg) translate(11px, -3px); }
   .b-write:hover .wr-note:nth-child(3) { transform: rotate(-1.4deg) translateY(4px); }
@@ -695,29 +944,38 @@
   .vid { position: relative; display: block; }
   .vid-thumb { display: block; width: 100%; aspect-ratio: 16 / 10; background: var(--clay); border-radius: 4px; }
   .vid .play {
-    position: absolute; inset: 0; margin: auto; width: 46px; height: 46px;
-    border-radius: 50%; background: var(--blue); display: grid; place-items: center;
+    position: absolute; top: 50%; left: 50%; translate: -50% -50%;
+    width: 50px; height: 50px;
+    border-radius: 50%; background: rgba(16, 13, 8, .46); display: grid; place-items: center;
+    backdrop-filter: blur(2px);
+    box-shadow: 0 3px 11px rgba(20, 16, 8, .2);
     transition: transform .2s cubic-bezier(.2,.8,.3,1), background .18s ease;
   }
-  .vid .play svg { width: 21px; height: 21px; fill: #F7F5EE; }
-  .b-video:hover .play { transform: scale(1.13); background: #24379B; }
+  .vid .play svg { width: 22px; height: 22px; fill: #FFFFFF; }
+  .b-video:hover .play { transform: scale(1.1); background: rgba(16, 13, 8, .62); }
   .vid .dur {
-    position: absolute; right: 9px; bottom: 9px;
+    position: absolute; left: 9px; bottom: 9px;
     background: rgba(255,253,248,.92); color: #7C5545;
     font-family: var(--mono); font-size: .58rem; padding: .14rem .32rem; border-radius: 2px;
   }
 
   /* --- photos + commentary --- */
   .b-photos { padding-bottom: 1.3rem; }
-  .ph-wrap { position: relative; flex: 1; min-height: 320px; }
+  .ph-wrap { position: relative; flex: 1; min-height: 350px; }
   .ph {
     position: absolute; background: var(--paper-2); padding: 7px;
     box-shadow: 0 1px 2px rgba(42,38,28,.10), 0 8px 20px rgba(42,38,28,.10);
     transition: transform .3s cubic-bezier(.2,.8,.3,1);
   }
   .ph img { display: block; width: 100%; height: 100%; object-fit: cover; }
-  .ph-1 { width: 62%; aspect-ratio: 4/3; top: 2%;  left: 0;  transform: rotate(-2.8deg); }
-  .ph-2 { width: 56%; aspect-ratio: 4/3; bottom: 2%; right: 0; transform: rotate(2.4deg); }
+  /* the portrait sits on top of the pile and at the top of it.
+     Sized off the wrap's HEIGHT, not its width: this tile is short and wide in
+     the one-column bento and tall and narrow in the three-column one, and a
+     width percentage looks right in only one of them. */
+  .ph-1 { height: 63%; width: auto; aspect-ratio: 3/4; top: 0;    left: 0; z-index: 2; transform: rotate(-2.8deg); }
+  .ph-2 { height: 50%; width: auto; aspect-ratio: 5/4; bottom: 0; right: 0; z-index: 1; transform: rotate(2.4deg); }
+  /* she's on the right of that frame — a centred crop puts the empty half forward */
+  .ph-2 img { object-position: 68% center; }
   .b-photos:hover .ph-1 { transform: rotate(-4.6deg) translate(-5px, -4px); }
   .b-photos:hover .ph-2 { transform: rotate(4deg) translate(5px, 3px); }
 
@@ -725,13 +983,13 @@
   .b-photos .callout {
     position: absolute; z-index: 4;
     font-family: var(--hand); font-size: .84rem; line-height: 1.25;
-    padding: .46rem .68rem; border-radius: 13px;
-    max-width: 10.5rem;
+    padding: .4rem .6rem; border-radius: 13px;
+    max-width: 8.4rem;
     box-shadow: 0 2px 6px rgba(42,38,28,.10);
     transition: transform .34s cubic-bezier(.2,.8,.3,1);
   }
-  .callout-1 { top: 3%; right: 1%; background: #D9E6F2; color: #29506E; border-bottom-left-radius: 3px; }
-  .callout-2 { bottom: 6%; left: 1%; background: #EBE0C6; color: #6A5620; border-bottom-right-radius: 3px; }
+  .callout-1 { top: 0; right: 0; background: #D9E6F2; color: #29506E; border-bottom-left-radius: 3px; }
+  .callout-2 { bottom: 1%; left: 0; background: #EBE0C6; color: #6A5620; border-bottom-right-radius: 3px; }
   .b-photos:hover .callout-1 { transform: translate(5px, -5px) rotate(1.6deg); }
   .b-photos:hover .callout-2 { transform: translate(-5px, 5px) rotate(-1.6deg); transition-delay: .05s; }
 
@@ -779,11 +1037,11 @@
     font-size: .78rem; white-space: nowrap;
     box-shadow: 0 0 0 1px rgba(60, 48, 30, .11);
   }
-  .tool img { height: 15px; width: auto; max-width: 70px; object-fit: contain; display: block; }
+  .tool img { height: 15px; width: 15px; object-fit: contain; display: block; flex: none; }
 
   /* ================= FOOTER ================= */
   .site-foot {
-    margin-top: clamp(3rem, 7vh, 4.5rem);
+    margin-top: calc(var(--sec-gap) * .7);
     padding-top: 1.05rem;
     border-top: 1px solid rgba(60, 48, 30, .15);
     display: flex; justify-content: space-between; align-items: baseline;
@@ -803,7 +1061,7 @@
        keeping 12px clearance so the notes' rotation can't clip at the edge.
        Columns flex, so the gap stays identical at every screen size. */
     gap: 10px;
-    margin-inline: calc(12px - var(--sheet-px));
+    margin-inline: calc(12px - var(--sheet-px)) calc(-1 * var(--rail));
   }
   .tn {
     position: relative;
@@ -884,10 +1142,22 @@
 
   /* ---- narrow: keep name + tabs on one static row ---- */
   @media (max-width: 700px) {
-    :root { --side: 14px; --top: 64px; --punch: 34px; }
-    .tabs { gap: 3px; min-width: 0; }
-    .tab { font-size: .74rem; padding: .46rem .6rem .54rem; }
-    .tab[aria-selected="true"] { padding-bottom: .76rem; }
+    :root { --side: 14px; --top: 78px; --punch: 34px; }
+    /* tabs share the bar's full width instead of huddling at the right */
+    .topbar { justify-content: stretch; }
+    .tabs { gap: 3px; min-width: 0; flex: 1; }
+    .tab {
+      flex: 1 1 0; min-width: 0; text-align: center;
+      font-size: .82rem; letter-spacing: .01em;
+      padding: .72rem .3rem .8rem;
+    }
+    .tab[aria-selected="true"] { padding-bottom: 1.04rem; }
+    /* an inline-flex ignores text-align, so the resume label needs this to centre */
+    .tab-out { justify-content: center; }
+
+    /* roomier tap targets */
+    .btn { font-size: .94rem; padding: .82rem 1.35rem; border-radius: 4px; }
+    .btn svg { width: 19px; height: 19px; }
     .page, .page-shadow { border-radius: 5px 5px 0 0; }
     .page::before { background-size: 15px 15px; }
     .lede { font-size: 1.3rem; }
@@ -895,7 +1165,10 @@
     .torn { max-width: none; }
   }
   @media (max-width: 420px) {
-    .tab { font-size: .66rem; padding: .42rem .46rem .5rem; letter-spacing: -.01em; }
+    /* tabs are full-width here, so they can carry a readable size */
+    .tab { font-size: .78rem; padding: .68rem .22rem .76rem; letter-spacing: 0; }
+    .tab[aria-selected="true"] { padding-bottom: 1rem; }
+    .btn { font-size: .9rem; padding: .78rem 1.15rem; }
   }
 
   /* ================= VIEWS — home / case studies ================= */
@@ -915,11 +1188,46 @@
     color: var(--ink);
     font-family: var(--grot);
   }
-  .cs section { margin-top: clamp(3.6rem, 9vh, 6rem); }
+  .cs section { margin-top: calc(var(--sec-gap) * 1.15); }
   /* every section sits on the paper itself — no tinted bands */
   .cs .tint { background: transparent; padding: 0; border-radius: 0; }
   .cs h3 { font-family: var(--serif); font-weight: 400; }
   .cs p { margin: 0; }
+
+  /* ---- cover: breaks out of the sheet's padding on both sides ---- */
+  .cs .cover {
+    /* flush to the paper's top edge: cancel the sheet's own top padding */
+    margin-top: calc(-1 * (clamp(1.6rem, 4vh, 2.8rem) + 24px));
+    margin-inline: calc(-1 * (var(--punch) + var(--sheet-px)))
+                   calc(-1 * (var(--sheet-px) + var(--rail)));
+    margin-bottom: clamp(1.8rem, 4vh, 2.8rem);
+    /* NOT aspect-ratio + max-height: when the cap bites, the browser shrinks the
+       WIDTH to preserve the ratio, which pulls the band off the right edge.
+       A plain height keeps the bleed; 390px is the artwork's natural height at a
+       full 1200px page, and the two other terms keep it sane when the window is
+       short or narrow. */
+    height: min(40vh, 26vw, 390px);
+    /* contain: every phone stays whole. What's left at the sides is the
+       artwork's own edge ramp, so the join is invisible. */
+    background:
+      var(--cover) center / contain no-repeat,
+      var(--cover-bg);
+
+    /* torn bottom edge. Two mask layers: the body, stopping short of the tear,
+       and a tiling SVG strip carrying the ragged profile. The tile's first and
+       last point share a y, so it repeats without a seam. */
+    --torn: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22160%22%20height%3D%2218%22%20viewBox%3D%220%200%20160%2018%22%3E%3Cpath%20d%3D%22M0%2C0%20H160%20V7.4%20L153.85%2C7.87%20L147.69%2C9.45%20L141.54%2C6.72%20L135.38%2C7.27%20L129.23%2C4.82%20L123.08%2C6.8%20L116.92%2C8.66%20L110.77%2C7.53%20L104.62%2C8.47%20L98.46%2C5.91%20L92.31%2C9.26%20L86.15%2C6.8%20L80%2C7.27%20L73.85%2C8.23%20L67.69%2C8.8%20L61.54%2C5.15%20L55.38%2C5.97%20L49.23%2C8.48%20L43.08%2C6.78%20L36.92%2C7.47%20L30.77%2C6.25%20L24.62%2C7.56%20L18.46%2C8.8%20L12.31%2C6.73%20L6.15%2C6.79%20L0%2C7.4%20Z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fsvg%3E");
+    -webkit-mask:
+      linear-gradient(#000, #000) top    / 100% calc(100% - 17px) no-repeat,
+      var(--torn)                 bottom / 160px 18px repeat-x;
+    mask:
+      linear-gradient(#000, #000) top    / 100% calc(100% - 17px) no-repeat,
+      var(--torn)                 bottom / 160px 18px repeat-x;
+  }
+  /* each ramp is sampled from its own artwork's left edge, so the band and the
+     photo meet without a seam when the cap leaves room at the sides */
+  .cs-gnc   .cover { --cover-bg: linear-gradient(180deg, #E8D2C5 0%, #E5CFC2 50%, #E1C7BA 100%); }
+  .cs-bella .cover { --cover-bg: linear-gradient(180deg, #CEDCE7 0%, #CBD9E4 50%, #C1D3DF 100%); }
 
   /* ---- hero: runs the full width of the sheet ---- */
   /* the portfolio's own .hero is a two-column grid; without this reset the
@@ -960,38 +1268,10 @@
   }
   .cs .divider .ln { flex: 1; height: 1px; background: rgba(60, 48, 30, .15); }
 
-  /* ---- process timeline: the dotted track from "Places that let me solve things" ---- */
-  /* one non-wrapping row, so :last-child suppresses the only trailing connector.
-     A wrapped grid draws a dotted line off the end of every row, pointing at nothing. */
-  .cs .timeline {
-    --tgap: clamp(.9rem, 2.4vw, 1.8rem);
-    display: flex; gap: var(--tgap);
-    overflow-x: auto; padding-bottom: .55rem;
-    scrollbar-width: thin; scrollbar-color: #CFC5AE transparent;
-  }
-  .cs .timeline::-webkit-scrollbar { height: 6px; }
-  .cs .timeline::-webkit-scrollbar-thumb { background: #CFC5AE; border-radius: 6px; }
-  .cs .timeline::-webkit-scrollbar-track { background: transparent; }
-  .cs .tstep {
-    position: relative; flex: 0 0 clamp(118px, 13vw, 152px);
-    padding-top: 1.5rem; font-size: .82rem; line-height: 1.32; color: var(--ink-2);
-  }
-  .cs .tstep::before {
-    content: ""; position: absolute; top: 4px; left: 0; width: 9px; height: 9px;
-    border-radius: 50%; background: var(--sage); box-shadow: 0 0 0 3px var(--paper);
-  }
-  .cs .tstep::after {
-    content: ""; position: absolute; top: 8px; left: 9px;
-    right: calc(-1 * var(--tgap));
-    border-top: 2px dotted rgba(84, 70, 48, .28);
-  }
-  .cs .tstep:last-child::after { display: none; }
-
   /* ---- card decks ---- */
   .cs .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.2rem; }
-  .cs .acts  { display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); gap: 1.2rem; }
   /* cards are sticky notes, in the same four colours as "Notes from nice people" */
-  .cs .card, .cs .panel, .cs .act, .cs .q {
+  .cs .card, .cs .panel {
     position: relative;
     background: var(--n-bg, #F2E3A4); color: var(--n-ink, #574410);
     border-radius: 2px;
@@ -999,36 +1279,36 @@
     box-shadow: 0 1px 2px rgba(42, 38, 28, .10), 0 7px 16px rgba(42, 38, 28, .09);
   }
   /* the gummed strip along the top of a real sticky note */
-  .cs .card::before, .cs .panel::before, .cs .act::before, .cs .q::before {
+  .cs .card::before, .cs .panel::before {
     content: ""; position: absolute; left: 0; right: 0; top: 0; height: 28px;
     background: linear-gradient(rgba(255,255,255,.30), rgba(255,255,255,0));
     pointer-events: none;
   }
   /* folded corner drawn over the corner, never clipped out of it */
-  .cs .card::after, .cs .panel::after, .cs .act::after, .cs .q::after {
+  .cs .card::after, .cs .panel::after {
     content: ""; position: absolute; right: 0; bottom: 0; width: 26px; height: 26px;
     clip-path: polygon(100% 0, 0 100%, 100% 100%);
     background: linear-gradient(315deg, var(--fold-hi) 18%, var(--fold-lo) 96%);
     filter: drop-shadow(-1.5px -1.5px 1.5px rgba(58, 46, 26, .26));
     pointer-events: none;
   }
-  .cs .card:nth-child(4n+1), .cs .panel:nth-child(4n+1), .cs .act:nth-child(4n+1), .cs .q:nth-child(4n+1)
+  .cs .card:nth-child(4n+1), .cs .panel:nth-child(4n+1)
     { --n-bg:#F2E3A4; --n-ink:#574410; --fold-hi:#FBF4D3; --fold-lo:#DDC77E; }
-  .cs .card:nth-child(4n+2), .cs .panel:nth-child(4n+2), .cs .act:nth-child(4n+2), .cs .q:nth-child(4n+2)
+  .cs .card:nth-child(4n+2), .cs .panel:nth-child(4n+2)
     { --n-bg:#D8E4C4; --n-ink:#3B4718; --fold-hi:#EFF4E5; --fold-lo:#BDCFA2; }
-  .cs .card:nth-child(4n+3), .cs .panel:nth-child(4n+3), .cs .act:nth-child(4n+3), .cs .q:nth-child(4n+3)
+  .cs .card:nth-child(4n+3), .cs .panel:nth-child(4n+3)
     { --n-bg:#EEDACF; --n-ink:#74503F; --fold-hi:#FAEFE9; --fold-lo:#DBBCAB; }
-  .cs .card:nth-child(4n+4), .cs .panel:nth-child(4n+4), .cs .act:nth-child(4n+4), .cs .q:nth-child(4n+4)
+  .cs .card:nth-child(4n+4), .cs .panel:nth-child(4n+4)
     { --n-bg:#D5E2EC; --n-ink:#315063; --fold-hi:#ECF3F8; --fold-lo:#B5CBDA; }
-  .cs .card:nth-child(odd), .cs .act:nth-child(odd), .cs .panel:nth-child(odd) { transform: rotate(-.55deg); }
-  .cs .card:nth-child(even), .cs .act:nth-child(even), .cs .panel:nth-child(even) { transform: rotate(.45deg); }
-  .cs .card h3, .cs .panel h3, .cs .act h3 {
+  .cs .card:nth-child(odd), .cs .panel:nth-child(odd) { transform: rotate(-.55deg); }
+  .cs .card:nth-child(even), .cs .panel:nth-child(even) { transform: rotate(.45deg); }
+  .cs .card h3, .cs .panel h3 {
     font-size: 1.04rem; letter-spacing: -.01em; margin: 0 0 .6rem; color: inherit;
   }
-  .cs .card li, .cs .panel li, .cs .act li { color: inherit; opacity: .92; }
-  .cs .card li::marker, .cs .panel li::marker, .cs .act li::marker { color: currentColor; opacity: .5; }
-  .cs .card strong, .cs .panel strong, .cs .act strong { color: inherit; }
-  .cs .card ul, .cs .panel ul, .cs .act ul {
+  .cs .card li, .cs .panel li { color: inherit; opacity: .92; }
+  .cs .card li::marker, .cs .panel li::marker { color: currentColor; opacity: .5; }
+  .cs .card strong, .cs .panel strong { color: inherit; }
+  .cs .card ul, .cs .panel ul {
     margin: 0; padding-left: 1.05rem; display: flex; flex-direction: column; gap: .45rem;
   }
   .cs li { font-size: .82rem; line-height: 1.62; color: var(--ink-2); }
@@ -1038,16 +1318,44 @@
   /* ---- interview questions ---- */
   .cs .qintro h3 { font-size: 1.15rem; margin: 0 0 .4rem; }
   .cs .qintro p { margin: 0 0 1.3rem; font-size: .88rem; line-height: 1.55; color: var(--ink-2); max-width: 58ch; }
-  .cs .qs { display: grid; grid-template-columns: repeat(auto-fit, minmax(242px, 1fr)); gap: .9rem; }
-  .cs .q { display: flex; gap: .7rem; }
-  .cs .q:nth-child(odd)  { transform: rotate(-.5deg); }
-  .cs .q:nth-child(even) { transform: rotate(.4deg); }
-  .cs .q .num { font-family: var(--mono); font-size: .6rem; letter-spacing: .1em; color: inherit; opacity: .55; padding-top: .18rem; }
-  .cs .q p { font-size: .85rem; line-height: 1.45; color: inherit; }
+  .cs .qlist {
+    list-style: none; margin: 0; counter-reset: qn;
+    padding: .2rem clamp(1rem, 2.4vw, 1.5rem);
+    background: var(--paper-2); border-radius: 6px;
+    box-shadow: 0 0 0 1px rgba(60, 48, 30, .09);
+  }
+  .cs .qlist li {
+    counter-increment: qn;
+    display: flex; gap: clamp(.7rem, 1.6vw, 1.1rem); align-items: baseline;
+    padding: .95rem 0; font-size: .92rem; line-height: 1.5; color: var(--ink);
+  }
+  .cs .qlist li + li { border-top: 1px solid rgba(60, 48, 30, .10); }
+  .cs .qlist li::before {
+    content: counter(qn, decimal-leading-zero);
+    font-family: var(--mono); font-size: .62rem; letter-spacing: .14em;
+    color: #9A8F79; flex: none;
+  }
+
+  /* ---- interventions: numbered blocks hung off a rule ---- */
+  .cs .ivs {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: clamp(1.5rem, 3vw, 2.2rem);
+  }
+  .cs .iv { padding-left: clamp(.95rem, 2vw, 1.3rem); border-left: 2px solid var(--sage); }
+  .cs .iv-n {
+    display: block; font-family: var(--mono); font-size: .58rem; letter-spacing: .16em;
+    text-transform: uppercase; color: #9A8F79; margin-bottom: .45rem;
+  }
+  .cs .iv h3 { font-size: 1.08rem; letter-spacing: -.012em; margin: 0 0 .65rem; }
+  .cs .iv p { font-size: .87rem; line-height: 1.6; color: var(--ink-2); }
+  .cs .iv ul { margin: 0; padding-left: 1.05rem; display: flex; flex-direction: column; gap: .5rem; }
 
   /* ---- results table ---- */
-  .cs .tw { overflow-x: auto; }
-  .cs table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: .85rem; }
+  /* no min-width and no scroller: the table wraps inside the column instead of
+     running off the side of the paper */
+  .cs .tw { overflow-x: visible; }
+  .cs table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+  .cs th, .cs td { overflow-wrap: anywhere; }
   .cs th {
     font-family: var(--mono); font-size: .58rem; letter-spacing: .14em;
     text-transform: uppercase; color: #9A8F79; text-align: left;
@@ -1060,6 +1368,25 @@
     font-variant-numeric: tabular-nums;
   }
   /* no hover on table rows — they aren't clickable and shouldn't pretend to be */
+
+  /* on a phone a three-column table cannot wrap narrow enough, so each row
+     becomes a small labelled block instead of a scroller */
+  @media (max-width: 560px) {
+    .cs table, .cs tbody, .cs tbody tr, .cs tbody td { display: block; width: 100%; }
+    .cs thead { display: none; }
+    .cs tbody tr {
+      padding: .85rem 0;
+      border-bottom: 1px solid rgba(60, 48, 30, .14);
+    }
+    .cs tbody td { border: 0; padding: .15rem 0; text-align: left; }
+    .cs tbody td:last-child { text-align: left; }
+    .cs tbody td::before {
+      content: attr(data-l);
+      display: block;
+      font-family: var(--mono); font-size: .54rem; letter-spacing: .14em;
+      text-transform: uppercase; color: #9A8F79; margin-bottom: .1rem;
+    }
+  }
 
   /* ---- hypotheses ---- */
   /* the separator belongs BETWEEN blocks, so hang it off the sibling combinator.
@@ -1179,11 +1506,6 @@
     font-family: var(--serif); font-size: clamp(1.2rem, 2.4vw, 1.6rem);
     letter-spacing: -.015em; margin: 0 0 .6rem;
   }
-  .cs footer {
-    margin-top: clamp(2.5rem, 6vh, 4rem); padding-top: 1.1rem;
-    border-top: 1px solid rgba(60, 48, 30, .15);
-    font-size: .78rem; color: var(--ink-3);
-  }
 
   @media (max-width: 760px) {
     .cs .screen { grid-template-columns: 1fr; }
@@ -1195,14 +1517,119 @@
     .fld { animation: none !important; }
     .view.is-entering { animation: none !important; }
   }
+
+  /* ===================== VIDEO OVERLAY ===================== */
+  .vo { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; }
+  .vo[hidden] { display: none; }
+  .vo-scrim {
+    position: absolute; inset: 0;
+    background: rgba(20, 17, 11, .74);
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+    animation: voFade .22s ease both;
+  }
+  .vo-panel {
+    position: relative; z-index: 1;
+    width: min(1080px, 92vw);
+    animation: voRise .26s cubic-bezier(.2,.8,.3,1) both;
+  }
+  @keyframes voFade { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes voRise { from { opacity: 0; transform: translateY(10px) scale(.985) } to { opacity: 1; transform: none } }
+
+  .vo-frame {
+    position: relative; width: 100%; aspect-ratio: 16 / 9;
+    max-height: 78vh; margin-inline: auto;
+    background: #15120D; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.45);
+  }
+  .vo-frame iframe { width: 100%; height: 100%; display: block; border: 0; background: #15120D; }
+
+
+  .vo-close {
+    position: absolute; top: -46px; right: 0;
+    width: 36px; height: 36px; border: 0; border-radius: 50%;
+    background: rgba(255,255,255,.14); color: #F3EDE1;
+    display: grid; place-items: center; cursor: pointer;
+    transition: background .16s ease, transform .16s ease;
+  }
+  .vo-close:hover { background: rgba(255,255,255,.26); transform: scale(1.06); }
+  .vo-close:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .vo-close svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+  @media (max-width: 640px) {
+    .vo-close { top: auto; bottom: -46px; right: 50%; transform: translateX(50%); }
+    .vo-close:hover { transform: translateX(50%) scale(1.06); }
+  }
+
+  /* ===================== BENTO VIDEO TILE ===================== */
+  /* the thumbnail holds its ratio; whatever space is left in the tile is filled
+     by a blurred, scaled copy of the same poster rather than dead colour */
+  .b-video { --vid-poster: url("assets/summary-poster.jpg"); }
+  .b-video .vid {
+    position: relative; flex: 1; min-height: 150px;
+    border-radius: 5px; overflow: hidden;
+    display: grid; place-items: center;
+    background: var(--clay);
+  }
+  .b-video .vid-thumb {
+    position: relative; z-index: 1;
+    /* fill the tile and crop, rather than fitting a ratio and padding the rest */
+    width: 100%; height: 100%; max-width: none; max-height: none;
+    aspect-ratio: auto;
+    background: var(--vid-poster, none) center / cover no-repeat, var(--clay);
+    border-radius: 4px;
+  }
+  /* the thumb sits on z-1, so the controls have to clear it */
+  .b-video .play, .b-video .dur { z-index: 2; }
+
+  /* ===================== NOTES CAROUSEL ===================== */
+  /* base first, so the narrow-screen query below can turn the dots on */
+  .tn-dots { display: none; justify-content: center; gap: 7px; margin-top: 1rem; }
+
+  @media (max-width: 560px) {
+    .tn-grid {
+      display: flex; grid-template-columns: none;
+      /* a horizontal scroller forces overflow-y to compute to auto/hidden, so the
+         notes' shadows would be sliced off. Padding gives them room inside the
+         scroll box; the matching negative margin keeps the layout height honest. */
+      overflow-x: auto; overflow-y: hidden;
+      padding-block: 18px 24px;
+      margin-block: -18px -24px;
+      scroll-snap-type: x mandatory;
+      /* gap must exceed the inline padding, or the next note peeks into it */
+      gap: 34px;
+      /* one note fills the view; the inline padding is shadow room, cancelled
+         by the matching negative margin so the note still reaches the edges */
+      margin-inline: calc(-1 * var(--sheet-px));
+      padding-inline: 12px;
+      scrollbar-width: none; -ms-overflow-style: none;
+      cursor: grab;
+    }
+    .tn-grid::-webkit-scrollbar { display: none; }
+    .tn-grid.is-dragging { cursor: grabbing; scroll-snap-type: none; }
+    .tn-dots { display: flex; margin-top: 1.1rem; }
+    .tn-grid .tn {
+      flex: 0 0 100%; scroll-snap-align: center;
+      min-height: 0;
+    }
+  }
+
+  .tn-dots button {
+    width: 7px; height: 7px; padding: 0; border: 0; border-radius: 50%;
+    background: rgba(84,70,48,.26); cursor: pointer;
+    transition: background .18s ease, transform .18s ease;
+  }
+  .tn-dots button[aria-current="true"] { background: var(--blue); transform: scale(1.3); }
+  .tn-dots button:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .vo-scrim, .vo-panel { animation: none; }
+  }
+
 </style>
 </head>
 <body>
 
-<canvas class="paint" aria-hidden="true"></canvas>
 <img class="paint-img" src="assets/meadow-soft.jpg" alt="">
 <div class="paint-veil" aria-hidden="true"></div>
-<div class="bg-readout" role="status" aria-live="polite"><i>1/3</i><span>Canvas</span></div>
 
 <header class="topbar">
   <button class="topback" type="button" data-back hidden>
@@ -1210,9 +1637,9 @@
     Back to work
   </button>
   <nav class="tabs" aria-label="Sections">
-    <button class="tab" role="tab" aria-selected="true">work</button>
-    <button class="tab" role="tab" aria-selected="false">experience</button>
-    <button class="tab" role="tab" aria-selected="false">about</button>
+    <button class="tab" role="tab" aria-selected="true" data-goto="sec-work">work</button>
+    <button class="tab" role="tab" aria-selected="false" data-goto="sec-exp">experience</button>
+    <button class="tab" role="tab" aria-selected="false" data-goto="sec-about">about</button>
     <a class="tab tab-out" href="#">resume
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9.5 7H17v7.5"/></svg>
     </a>
@@ -1250,63 +1677,66 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M16.5 10.5 21 8v8l-4.5-2.5z"/></svg>
               Who is she
             </a>
-            <a class="btn btn-ghost" href="#contact">Let&rsquo;s chat</a>
+            <a class="btn btn-ghost" href="mailto:saathvika.jali@gmail.com">Let&rsquo;s chat</a>
           </div>
         </div>
 
         <div class="hero-right">
-          <a class="hv" href="#summary" aria-label="Watch the summary, 1 minute 47 seconds">
+          <a class="hv" href="#summary" aria-label="Watch the summary, 2 minutes 8 seconds">
             <span class="hv-thumb"></span>
+            <span class="vprev" aria-hidden="true"></span>
             <span class="play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.5v11l9-5.5z"/></svg></span>
-            <span class="dur">1:47</span>
+            <span class="dur">2:08</span>
           </a>
         </div>
 
       </section>
 
       <!-- ============ WORK ============ -->
-      <section class="work-sec">
+      <section class="work-sec" id="sec-work">
         <div class="wa-head">
           <h2>Questions I loved asking</h2>
+          <button class="wa-next" type="button" aria-label="Show more projects">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+          </button>
         </div>
         <!-- PLACEHOLDER: project titles and links are stand-ins -->
         <div class="wa-grid">
 
           <a class="wa-card" href="#gnc" data-case="gnc">
-            <span class="plate p-sage"></span>
+            <span class="plate img" style="--plate-img:url('assets/case-gnc-thumb.jpg')"></span>
             <span class="wa-meta">
               <span class="wa-name">What aids decision making while buying supplements online?</span>
-              <span class="wa-cta">Read article
+              <span class="wa-cta">Read more
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
               </span>
             </span>
           </a>
 
           <a class="wa-card" href="#bella" data-case="bella">
-            <span class="plate p-butter"></span>
+            <span class="plate img" style="--plate-img:url('assets/case-bella-thumb.jpg')"></span>
             <span class="wa-meta">
               <span class="wa-name">How do you buy a perfume you can&rsquo;t smell?</span>
-              <span class="wa-cta">Read article
+              <span class="wa-cta">Read more
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
               </span>
             </span>
           </a>
 
-          <a class="wa-card" href="#">
-            <span class="plate p-clay"></span>
+          <div class="wa-card is-soon">
+            <span class="plate img" style="--plate-img:url('assets/case-cart-thumb.jpg')"></span>
             <span class="wa-meta">
               <span class="wa-name">Why do people abandon a cart they spent an hour filling?</span>
-              <span class="wa-cta">Read article
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
-              </span>
+              <span class="wa-soon">Coming soon</span>
             </span>
-          </a>
+          </div>
 
-          <a class="wa-card" href="#">
-            <span class="plate p-sky"></span>
+          <a class="wa-card" href="https://medium.com/@saathvika.jali/ux-case-study-chomp-4bad48182a67" target="_blank" rel="noopener noreferrer"
+             aria-label="Read the Chomp case study on Medium (opens in a new tab)">
+            <span class="plate img" style="--plate-img:url('assets/case-chomp-thumb.jpg')"></span>
             <span class="wa-meta">
-              <span class="wa-name">Something new, still on the desk</span>
-              <span class="wa-cta">Peek early
+              <span class="wa-name">What if your fridge could tell you what to cook?</span>
+              <span class="wa-cta">Read more
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
               </span>
             </span>
@@ -1316,7 +1746,7 @@
       </section>
 
       <!-- ============ WORKED AT ============ -->
-      <section class="work-sec">
+      <section class="work-sec" id="sec-exp">
         <h2 class="worked-h">Places that let me solve things</h2>
         <div class="worked-row">
           <div class="worked-track">
@@ -1358,7 +1788,7 @@
               <span class="co-yrs">Jun &rsquo;24 &ndash; Aug &rsquo;24</span>
             </div>
             <div class="co">
-              <span class="co-tile co-logo"><img src="assets/companies/bluelearn.png" alt="Bluelearn"></span>
+              <span class="co-tile co-logo is-full" style="--logo-bg:#FFFFFF"><img src="assets/companies/bluelearn-white.png" alt="Bluelearn"></span>
               <span class="co-name">Bluelearn</span>
               <span class="co-yrs">Aug &rsquo;21 &ndash; May &rsquo;22</span>
             </div>
@@ -1400,43 +1830,45 @@
             </figcaption>
           </figure>
         </div>
+        <div class="tn-dots" role="tablist" aria-label="Testimonials"></div>
       </section>
 
       <!-- ============ BENTO ============ -->
-      <section class="bento">
+      <section class="bento" id="sec-about">
 
-        <a class="bx b-write" href="#" aria-label="Read Saathvika&rsquo;s writing on Medium">
+        <a class="bx b-write" href="https://medium.com/@saathvika.jali" target="_blank" rel="noopener noreferrer"
+           aria-label="Read Saathvika&rsquo;s writing on Medium (opens in a new tab)">
           <span class="bx-head">
             <span class="bx-t">Always thinking</span>
             <span class="bx-badge"><b>M</b>Medium</span>
           </span>
           <span class="wr-stack">
-            <span class="wr-note"><b>On saying no</b>Why the third revision is usually the honest one.</span>
-            <span class="wr-note"><b>Designing for boredom</b>Most of a product is the quiet parts.</span>
-            <span class="wr-note"><b>Everyday design</b>Notes from a designer who over-notices things.</span>
+            <span class="wr-note"><b>Designing With Constraints, Not Despite Them</b></span>
+            <span class="wr-note"><b>A Note to CS Majors: Why You Should Care About UX</b></span>
+            <span class="wr-note"><b>A love letter to planners, paper tabs, and getting my life together</b></span>
           </span>
           <span class="bx-cta">Read on Medium <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></span>
         </a>
 
-        <a class="bx b-video" href="#summary" aria-label="Watch the summary, 1 minute 47 seconds">
+        <a class="bx b-video" href="#summary" aria-label="Watch the summary, 2 minutes 8 seconds">
           <span class="bx-head">
             <span class="bx-t">Wait, who is she again?</span>
           </span>
           <span class="vid">
             <span class="vid-thumb"></span>
+            <span class="vprev" aria-hidden="true"></span>
             <span class="play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.5v11l9-5.5z"/></svg></span>
-            <span class="dur">1:47</span>
+            <span class="dur">2:08</span>
           </span>
-          <span class="bx-cta">Watch summary <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></span>
         </a>
 
         <div class="bx b-photos">
           <span class="bx-t">Slice of life</span>
           <div class="ph-wrap">
-            <div class="ph ph-1"><img src="assets/saathvika-hero.jpg" alt="Saathvika at a flower-filled table"></div>
-            <div class="ph ph-2"><img src="assets/saathvika-clip.jpg" alt="Saathvika working"></div>
-            <span class="callout callout-1">third coffee, first good idea</span>
-            <span class="callout callout-2">this is what &ldquo;one small tweak&rdquo; looks like</span>
+            <div class="ph ph-1"><img src="assets/saathvika-trail.jpg" alt="Saathvika on a mountain trail with a pack and trekking pole"></div>
+            <div class="ph ph-2"><img src="assets/saathvika-calf.jpg" alt="Saathvika leaning her head against a calf on a stone path"></div>
+            <span class="callout callout-1">no signal, on purpose</span>
+            <span class="callout callout-2">unscheduled stakeholder meeting</span>
           </div>
         </div>
 
@@ -1445,10 +1877,10 @@
           <a class="sticky" href="#" aria-label="Open resume"><span>My résumé &rarr;</span></a>
         </div>
 
-        <a class="bx b-contact" href="mailto:hello@saathvika.me">
+        <a class="bx b-contact" href="mailto:saathvika.jali@gmail.com">
           <span class="bx-t">Say Hello!</span>
           <div class="mail">
-            <div class="mail-row"><b>To</b><span>hello@saathvika.me</span></div>
+            <div class="mail-row"><b>To</b><span>saathvika.jali@gmail.com</span></div>
             <div class="mail-row"><b>Re</b><span>Something you&rsquo;re building</span></div>
             <div class="mail-body">Say hello&hellip;</div>
           </div>
@@ -1457,13 +1889,13 @@
 
         <div class="bx b-socials">
           <span class="bx-t">Stack</span>
-          <!-- LOGO SLOTS: swap each chip's text for <img src="assets/tools/<name>.png" alt="<Name>"> -->
+          <!-- marks from Simple Icons (CC0), tinted to each brand's own hex -->
           <div class="soc-row">
-            <span class="tool">Figma</span>
-            <span class="tool">Claude</span>
-            <span class="tool">Notion</span>
-            <span class="tool">ChatGPT</span>
-            <span class="tool">Gemini</span>
+            <span class="tool"><img src="assets/tools/figma.svg" alt="" aria-hidden="true">Figma</span>
+            <span class="tool"><img src="assets/tools/claude.svg" alt="" aria-hidden="true">Claude</span>
+            <span class="tool"><img src="assets/tools/notion.svg" alt="" aria-hidden="true">Notion</span>
+            <span class="tool"><img src="assets/tools/chatgpt.svg" alt="" aria-hidden="true">ChatGPT</span>
+            <span class="tool"><img src="assets/tools/gemini.svg" alt="" aria-hidden="true">Gemini</span>
           </div>
         </div>
 
@@ -1473,8 +1905,8 @@
         <span>Saathvika &middot; <em>product designer</em></span>
         <nav>
           <a href="#">Résumé</a>
-          <a href="#">Email</a>
-          <a href="#">LinkedIn</a>
+          <a href="mailto:saathvika.jali@gmail.com">Email</a>
+          <a href="https://www.linkedin.com/in/saathvika-jali/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
         </nav>
         <span>Built with too many tabs open</span>
       </footer>
@@ -1484,6 +1916,13 @@
 
 <div class="view" data-view="gnc" hidden>
 <article class="cs cs-gnc">
+
+<div class="cover" style="--cover:url('assets/case-gnc-cover.jpg')" role="img" aria-label="Project cover"></div>
+
+<button class="csback" type="button" data-back>
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H6M12 6l-6 6 6 6"/></svg>
+  Back to work
+</button>
 
 <header class="hero">
   <div class="wrap">
@@ -1498,44 +1937,27 @@
   </div>
 </header>
 
-<section>
-  <div class="wrap">
-    <div class="divider"><span class="n">01 / Scientific Process</span><span class="ln"></span></div>
-    <div class="timeline">
-      <div class="tstep">Audit the site</div>
-      <div class="tstep">Watch session recordings</div>
-      <div class="tstep">Find bottlenecks</div>
-      <div class="tstep">Write interview questions</div>
-      <div class="tstep">Talk to users</div>
-      <div class="tstep">Get insights</div>
-      <div class="tstep">Build personas</div>
-      <div class="tstep">Turn bottlenecks into actionables</div>
-      <div class="tstep">Ship as controlled A/B test</div>
-    </div>
-  </div>
-</section>
-
 <section class="tint">
   <div class="wrap">
-    <div class="divider"><span class="n">02 / User Interviews</span><span class="ln"></span></div>
+    <div class="divider"><span class="n">01 / User Interviews</span><span class="ln"></span></div>
     <div class="qintro">
       <h3>Unbiased Inquiries</h3>
       <p>To uncover raw behaviors rather than opinion-gathering on design assets, our conversational questionnaire avoided direct UI discussion completely.</p>
     </div>
-    <div class="qs">
-      <div class="q"><span class="num">01</span><p>What's your lifestyle like?</p></div>
-      <div class="q"><span class="num">02</span><p>How did you hear about GNC?</p></div>
-      <div class="q"><span class="num">03</span><p>What makes you trust a nutrition brand?</p></div>
-      <div class="q"><span class="num">04</span><p>How do you decide which supplement to take?</p></div>
-      <div class="q"><span class="num">05</span><p>Do you wait for offers to buy, or buy as and when needed?</p></div>
-      <div class="q"><span class="num">06</span><p>Would you subscribe for a discount?</p></div>
-    </div>
+    <ol class="qlist">
+      <li>What's your lifestyle like?</li>
+      <li>How did you hear about GNC?</li>
+      <li>What makes you trust a nutrition brand?</li>
+      <li>How do you decide which supplement to take?</li>
+      <li>Do you wait for offers to buy, or buy as and when needed?</li>
+      <li>Would you subscribe for a discount?</li>
+    </ol>
   </div>
 </section>
 
 <section>
   <div class="wrap">
-    <div class="divider"><span class="n">03 / Field Discoveries</span><span class="ln"></span></div>
+    <div class="divider"><span class="n">02 / Field Discoveries</span><span class="ln"></span></div>
     <div class="board">
       <div class="card"><h3>Discovery</h3><ul>
         <li>Instagram dominant via influencer custom discount codes.</li>
@@ -1580,20 +2002,20 @@
 
 <section class="tint">
   <div class="wrap">
-    <div class="divider"><span class="n">05 / UX Interventions</span><span class="ln"></span></div>
-    <div class="acts">
-      <div class="act"><h3>Make the site good at confirming</h3><ul>
+    <div class="divider"><span class="n">03 / UX Interventions</span><span class="ln"></span></div>
+    <div class="ivs">
+      <div class="iv"><span class="iv-n">Intervention 01</span><h3>Make the site good at confirming</h3><ul>
         <li>Persistent '90 Years Heritage' legacy badge directly on the product detail page.</li>
         <li>Direct lab test certificate results available via a prominent expandable widget.</li>
         <li>Clear back-of-package nutritional panel previews embedded inside listing images.</li>
         <li>Highlighted flavor profiles and mixability feedback scores clearly visible.</li>
         <li>Official 'Trainer Recommended' contextual tags on high-performing SKUs.</li>
       </ul></div>
-      <div class="act"><h3>Give the uncoached buyer a framework</h3><ul>
+      <div class="iv"><span class="iv-n">Intervention 02</span><h3>Give the uncoached buyer a framework</h3><ul>
         <li>Goal-based recommendation quiz based on the customized FAE framework (Goal → Fitness Level → Dietary Preference → Budget → Sensitivities).</li>
         <li>Expertly curated pre-configured product bundles positioned explicitly as 'trainer recommended logic'.</li>
       </ul></div>
-      <div class="act"><h3>Convert the wait into a cycle</h3><ul>
+      <div class="iv"><span class="iv-n">Intervention 03</span><h3>Convert the wait into a cycle</h3><ul>
         <li>Direct currency % discount representations explicitly featured on product listings.</li>
         <li>Automated CRM restock nudges systematically sent at consumer consumption days 22-25.</li>
         <li>Highly visual wishlist price-drop notifications triggered in real-time.</li>
@@ -1605,21 +2027,21 @@
 
 <section>
   <div class="wrap">
-    <div class="divider"><span class="n">06 / A/B Test Results</span><span class="ln"></span></div>
+    <div class="divider"><span class="n">04 / A/B Test Results</span><span class="ln"></span></div>
     <div class="tw">
       <table>
         <thead><tr><th>Campaign experiment</th><th>Primary metric goal</th><th>Measured lift</th></tr></thead>
         <tbody>
-          <tr><td>EMI Options</td><td>Purchase Revenue</td><td>+13.37%</td></tr>
-          <tr><td>Shoppable Videos</td><td>Purchase Revenue</td><td>+11.79%</td></tr>
-          <tr><td>Shoppable Videos (New)</td><td>Purchase Revenue</td><td>+10.49%</td></tr>
-          <tr><td>Product Title</td><td>Purchase Revenue</td><td>+10.00%</td></tr>
-          <tr><td>Product Card</td><td>ATC on product card</td><td>+8.51%</td></tr>
-          <tr><td>Variant Selector Popup</td><td>Purchase Event</td><td>+7.43%</td></tr>
-          <tr><td>Trustification Section</td><td>Shopify Purchase</td><td>+6.35%</td></tr>
-          <tr><td>GNC Cash PDP</td><td>Purchase Event</td><td>+5.89%</td></tr>
-          <tr><td>Cart Progress Bar</td><td>Purchase Revenue</td><td>+5.02%</td></tr>
-          <tr><td>New Cart Upsell UI</td><td>Purchase Revenue</td><td>+3.84%</td></tr>
+          <tr><td data-l="Campaign experiment">EMI Options</td><td data-l="Primary metric goal">Purchase Revenue</td><td data-l="Measured lift">+13.37%</td></tr>
+          <tr><td data-l="Campaign experiment">Shoppable Videos</td><td data-l="Primary metric goal">Purchase Revenue</td><td data-l="Measured lift">+11.79%</td></tr>
+          <tr><td data-l="Campaign experiment">Shoppable Videos (New)</td><td data-l="Primary metric goal">Purchase Revenue</td><td data-l="Measured lift">+10.49%</td></tr>
+          <tr><td data-l="Campaign experiment">Product Title</td><td data-l="Primary metric goal">Purchase Revenue</td><td data-l="Measured lift">+10.00%</td></tr>
+          <tr><td data-l="Campaign experiment">Product Card</td><td data-l="Primary metric goal">ATC on product card</td><td data-l="Measured lift">+8.51%</td></tr>
+          <tr><td data-l="Campaign experiment">Variant Selector Popup</td><td data-l="Primary metric goal">Purchase Event</td><td data-l="Measured lift">+7.43%</td></tr>
+          <tr><td data-l="Campaign experiment">Trustification Section</td><td data-l="Primary metric goal">Shopify Purchase</td><td data-l="Measured lift">+6.35%</td></tr>
+          <tr><td data-l="Campaign experiment">GNC Cash PDP</td><td data-l="Primary metric goal">Purchase Event</td><td data-l="Measured lift">+5.89%</td></tr>
+          <tr><td data-l="Campaign experiment">Cart Progress Bar</td><td data-l="Primary metric goal">Purchase Revenue</td><td data-l="Measured lift">+5.02%</td></tr>
+          <tr><td data-l="Campaign experiment">New Cart Upsell UI</td><td data-l="Primary metric goal">Purchase Revenue</td><td data-l="Measured lift">+3.84%</td></tr>
         </tbody>
       </table>
     </div>
@@ -1628,7 +2050,7 @@
 
 <section class="tint">
   <div class="wrap">
-    <div class="divider"><span class="n">07 / Experiment Rationale</span><span class="ln"></span></div>
+    <div class="divider"><span class="n">05 / Experiment Rationale</span><span class="ln"></span></div>
 
     <div class="hyp">
       <div class="hyp-head">
@@ -1853,7 +2275,7 @@
 
 <section>
   <div class="wrap">
-    <div class="divider"><span class="n">08 / Workflow &amp; Tools</span><span class="ln"></span></div>
+    <div class="divider"><span class="n">06 / Workflow &amp; Tools</span><span class="ln"></span></div>
     <div class="two">
       <div>
         <h3>Synthesizing with Speed</h3>
@@ -1873,12 +2295,18 @@
 </section>
 
 
-<footer><div class="wrap">Saathvika Jali — Case Study · GNC India</div></footer>
 </article>
 </div>
 
 <div class="view" data-view="bella" hidden>
 <article class="cs cs-bella">
+
+<div class="cover" style="--cover:url('assets/case-bella-cover.jpg')" role="img" aria-label="Project cover"></div>
+
+<button class="csback" type="button" data-back>
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H6M12 6l-6 6 6 6"/></svg>
+  Back to work
+</button>
 
 <header class="hero">
   <div class="wrap">
@@ -1893,24 +2321,9 @@
   </div>
 </header>
 
-<section>
-  <div class="wrap">
-    <div class="divider"><span class="n">01 / Process</span><span class="ln"></span></div>
-    <div class="timeline">
-      <div class="tstep">User research</div>
-      <div class="tstep">In-store conversations &amp; observation</div>
-      <div class="tstep">Synthesis</div>
-      <div class="tstep">Actionables</div>
-      <div class="tstep">New PDP</div>
-      <div class="tstep">Design system</div>
-      <div class="tstep">Template rollout</div>
-    </div>
-  </div>
-</section>
-
 <section class="tint">
   <div class="wrap">
-    <div class="divider"><span class="n">02 / User Research &amp; In-Store</span><span class="ln"></span></div>
+    <div class="divider"><span class="n">01 / User Research &amp; In-Store</span><span class="ln"></span></div>
     <div class="two">
       <div>
         <h3>User Research</h3>
@@ -1926,7 +2339,7 @@
 
 <section>
   <div class="wrap">
-    <div class="divider"><span class="n">03 / Field Discoveries</span><span class="ln"></span></div>
+    <div class="divider"><span class="n">02 / Field Discoveries</span><span class="ln"></span></div>
     <div class="board">
       <div class="card">
         <h3>Pain Points</h3>
@@ -1973,15 +2386,15 @@
 
 <section class="tint">
   <div class="wrap">
-    <div class="divider"><span class="n">04 / In-Store Behaviours</span><span class="ln"></span></div>
+    <div class="divider"><span class="n">03 / In-Store Behaviours</span><span class="ln"></span></div>
     <div class="tw">
       <table>
         <thead><tr><th>Store segment type</th><th>In-store behaviour</th><th>Online equivalent UX</th></tr></thead>
         <tbody>
-          <tr><td>High intent</td><td>Asks for a refill or a specific brand</td><td>Fast reordering, easy transaction</td></tr>
-          <tr><td>Segmentation-led</td><td>Asks by feel — girly, manly, floral, strong, bold</td><td>Tag and filter in user language</td></tr>
-          <tr><td>Exploratory</td><td>Doesn't know what they want, or is shopping for someone else</td><td>Fragrance finder / quiz</td></tr>
-          <tr><td>Gifter</td><td>Wants gift boxes and collections</td><td>Gift sets</td></tr>
+          <tr><td data-l="Store segment type">High intent</td><td data-l="In-store behaviour">Asks for a refill or a specific brand</td><td data-l="Online equivalent UX">Fast reordering, easy transaction</td></tr>
+          <tr><td data-l="Store segment type">Segmentation-led</td><td data-l="In-store behaviour">Asks by feel — girly, manly, floral, strong, bold</td><td data-l="Online equivalent UX">Tag and filter in user language</td></tr>
+          <tr><td data-l="Store segment type">Exploratory</td><td data-l="In-store behaviour">Doesn't know what they want, or is shopping for someone else</td><td data-l="Online equivalent UX">Fragrance finder / quiz</td></tr>
+          <tr><td data-l="Store segment type">Gifter</td><td data-l="In-store behaviour">Wants gift boxes and collections</td><td data-l="Online equivalent UX">Gift sets</td></tr>
         </tbody>
       </table>
     </div>
@@ -2008,19 +2421,19 @@
 
 <section>
   <div class="wrap">
-    <div class="divider"><span class="n">05 / UX Interventions</span><span class="ln"></span></div>
-    <div class="acts">
-      <div class="act"><h3>Fix the longevity trap</h3><p>Remove explicit hour claims. Shift listing images, description and review prompts to other sensory attributes — energising, magnetic, bold.</p></div>
-      <div class="act"><h3>Visualize the smell</h3><p>Visuals that explain scent development, show how the notes unfold and what the perfume feels like. Imagery for listing images and A+ content focused on the feel of the perfume.</p></div>
-      <div class="act"><h3>Speak the user's language</h3><p>Fix search to match native user vocabulary. Standardise nomenclature. Create a “Find Your Fragrance” interactive choice quiz.</p></div>
-      <div class="act"><h3>Rebuild trust</h3><p>A structured trust program that turns reviews, safety, and education into visible proof points customers can act on.</p></div>
+    <div class="divider"><span class="n">04 / UX Interventions</span><span class="ln"></span></div>
+    <div class="ivs">
+      <div class="iv"><span class="iv-n">Intervention 01</span><h3>Fix the longevity trap</h3><p>Remove explicit hour claims. Shift listing images, description and review prompts to other sensory attributes — energising, magnetic, bold.</p></div>
+      <div class="iv"><span class="iv-n">Intervention 02</span><h3>Visualize the smell</h3><p>Visuals that explain scent development, show how the notes unfold and what the perfume feels like. Imagery for listing images and A+ content focused on the feel of the perfume.</p></div>
+      <div class="iv"><span class="iv-n">Intervention 03</span><h3>Speak the user's language</h3><p>Fix search to match native user vocabulary. Standardise nomenclature. Create a “Find Your Fragrance” interactive choice quiz.</p></div>
+      <div class="iv"><span class="iv-n">Intervention 04</span><h3>Rebuild trust</h3><p>A structured trust program that turns reviews, safety, and education into visible proof points customers can act on.</p></div>
     </div>
   </div>
 </section>
 
 <section class="tint">
   <div class="wrap">
-    <div class="divider"><span class="n">06 / What We Built: New PDP</span><span class="ln"></span></div>
+    <div class="divider"><span class="n">05 / What We Built: New PDP</span><span class="ln"></span></div>
 
     <div class="screen">
       <figure class="canvas">
@@ -2031,7 +2444,6 @@
         <span class="pin" style="top:90.5%">4</span>
       </figure>
       <div class="ann">
-        <p class="sub">Screen 01</p>
         <h3>First fold</h3>
         <ol>
           <li><div><b>Benefit, not hours</b><span>“Confidence that stays with you all day” carries longevity as a feeling. No hour count, so no promise the bottle can fail against.</span></div></li>
@@ -2051,7 +2463,6 @@
         <span class="pin" style="top:80.5%">4</span>
       </figure>
       <div class="ann">
-        <p class="sub">Screen 02</p>
         <h3>The Scent Journey</h3>
         <ol>
           <li><div><b>The journey, made navigable</b><span>Top, heart and base become three steps instead of three words buried under “read more.”</span></div></li>
@@ -2070,7 +2481,6 @@
         <span class="pin in" style="top:80.5%; left:50.5%">3</span>
       </figure>
       <div class="ann">
-        <p class="sub">Screen 03</p>
         <h3>Better Together Combos</h3>
         <ol>
           <li><div><b>Paired by scent family</b><span>Both items carry “Musky,” so the bundle reads as a scent decision rather than a discount coincidence.</span></div></li>
@@ -2084,80 +2494,62 @@
       <table>
         <thead><tr><th>Redesigned PDP element</th><th>User motivation answered</th></tr></thead>
         <tbody>
-          <tr><td>Optimised first fold &amp; storytelling subtitle</td><td>Emotional scent language; standardised nomenclature</td></tr>
-          <tr><td>Listing images mixing product &amp; notes</td><td>Visual cues drive decisions; users need a feel, not a spec</td></tr>
-          <tr><td>Price block featuring Bellacash</td><td>₹500–1,200 discount buyers; “value max” cue from store</td></tr>
-          <tr><td>Visual notes section</td><td>Users don't understand notes; notes were buried; staff educate</td></tr>
-          <tr><td>Walls of text removed</td><td>Notes and details were unreadable previously</td></tr>
-          <tr><td>Curated Bundle section</td><td>Value-deal buyers; bundles already perform strongly</td></tr>
-          <tr><td>Brand USPs</td><td>Trust gap; premium-at-affordable aspiration</td></tr>
-          <tr><td>“Where to wear it” widgets</td><td>Occasion-based buying; gifting; girly/manly framing</td></tr>
+          <tr><td data-l="Redesigned PDP element">Optimised first fold &amp; storytelling subtitle</td><td data-l="User motivation answered">Emotional scent language; standardised nomenclature</td></tr>
+          <tr><td data-l="Redesigned PDP element">Listing images mixing product &amp; notes</td><td data-l="User motivation answered">Visual cues drive decisions; users need a feel, not a spec</td></tr>
+          <tr><td data-l="Redesigned PDP element">Price block featuring Bellacash</td><td data-l="User motivation answered">₹500–1,200 discount buyers; “value max” cue from store</td></tr>
+          <tr><td data-l="Redesigned PDP element">Visual notes section</td><td data-l="User motivation answered">Users don't understand notes; notes were buried; staff educate</td></tr>
+          <tr><td data-l="Redesigned PDP element">Walls of text removed</td><td data-l="User motivation answered">Notes and details were unreadable previously</td></tr>
+          <tr><td data-l="Redesigned PDP element">Curated Bundle section</td><td data-l="User motivation answered">Value-deal buyers; bundles already perform strongly</td></tr>
+          <tr><td data-l="Redesigned PDP element">Brand USPs</td><td data-l="User motivation answered">Trust gap; premium-at-affordable aspiration</td></tr>
+          <tr><td data-l="Redesigned PDP element">“Where to wear it” widgets</td><td data-l="User motivation answered">Occasion-based buying; gifting; girly/manly framing</td></tr>
         </tbody>
       </table>
     </div>
-
-    <p class="callout">“The PDP is the interpreter. It translates visual cues into scent language, explains the notes, and shows the scent journey — the three jobs the store staff were doing manually.”</p>
   </div>
 </section>
 
 <section>
   <div class="wrap">
-    <div class="divider"><span class="n">07 / What It Became</span><span class="ln"></span></div>
+    <div class="divider"><span class="n">06 / What It Became</span><span class="ln"></span></div>
     <p class="became">A unified template system.</p>
     <p class="measure">The PDP introduced new fonts and colours, which became Bellavita's design system. That system is now the base for the redesign of the remaining pages, and the PDP itself is the base template for skincare and cosmetics.</p>
   </div>
 </section>
 
-<footer><div class="wrap">Saathvika Jali — Case Study · Bellavita</div></footer>
 </article>
 </div>
 
   </div>
+  <div class="srail" aria-hidden="true"><div class="sthumb"></div></div>
 </main>
+
+<!-- ============ VIDEO OVERLAY ============ -->
+<div class="vo" id="vo" hidden>
+  <div class="vo-scrim" data-vo-close></div>
+  <div class="vo-panel" role="dialog" aria-modal="true" aria-label="Summary video">
+    <button class="vo-close" type="button" data-vo-close aria-label="Close video">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <div class="vo-frame" id="vo-frame">
+      <!-- src is set on open and cleared on close, so the video doesn't load
+           until it's wanted and stops the moment the overlay is dismissed -->
+      <iframe id="vo-video" title="Hello World — Saathvika" src="" allowfullscreen
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>
+  </div>
+</div>
+
 
 <script>
 (function () {
-  /* ---- stand-in painting: replaced the moment assets/meadow.jpg exists ---- */
-  var img = document.querySelector('.paint-img');
-
-  /* ---------------- TEMP: tap background to cycle artwork ---------------- */
-  var BGS = [
-    { label: 'Canvas — generated',  src: null,                         blur: '9px' },
-    { label: 'Oil painting',        src: 'assets/meadow.jpg',       blur: '9px' },
-    { label: 'Illustrated meadow',  src: 'assets/meadow-soft.jpg',  blur: '0px' }
-  ];
-  var readout = document.querySelector('.bg-readout');
-  var idx = parseInt(localStorage.getItem('svk-bg'), 10);
-  if (!(idx >= 0 && idx < BGS.length)) idx = 2;   /* default: newest artwork */
-  var toastTimer;
-
-  function applyBg(announce) {
-    var b = BGS[idx];
-    /* this artwork ships pre-blurred, so don't blur it twice */
-    document.documentElement.style.setProperty('--bg-blur', b.blur);
-    if (!b.src) {
-      img.classList.remove('ok');
-    } else if (img.getAttribute('src') === b.src) {
-      img.classList.add('ok');
-    } else {
-      img.classList.remove('ok');
-      img.onload = function () { img.classList.add('ok'); };
-      img.setAttribute('src', b.src);
-    }
-    try { localStorage.setItem('svk-bg', idx); } catch (e) {}
-    readout.querySelector('i').textContent = (idx + 1) + '/' + BGS.length;
-    readout.querySelector('span').textContent = b.label;
-    if (announce) {
-      readout.classList.add('show');
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(function () { readout.classList.remove('show'); }, 1700);
-    }
-  }
-
-  document.querySelector('.paint-veil').addEventListener('click', function () {
-    idx = (idx + 1) % BGS.length;
-    applyBg(true);
-  });
+  /* ---- the painting behind the binder: one artwork, faded in once ---- */
+  (function () {
+    var img = document.querySelector('.paint-img');
+    if (!img) return;
+    if (img.complete) { img.classList.add('ok'); }
+    else { img.addEventListener('load', function () { img.classList.add('ok'); }); }
+  })();
 
   /* the page scrolls inside .sheet, so forward wheel events that land
      on the artwork or the top bar instead of swallowing them */
@@ -2181,97 +2573,6 @@
     ty = y;
     e.preventDefault();
   }, { passive: false });
-
-  applyBg(true);
-
-  var cv = document.querySelector('.paint');
-  var ctx = cv.getContext('2d');
-
-  var seed = 20260731;
-  function rnd() { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }
-  function rr(a, b) { return a + rnd() * (b - a); }
-
-  function paint() {
-    seed = 20260731;
-    var dpr = Math.min(window.devicePixelRatio || 1, 2);
-    var w = window.innerWidth, h = window.innerHeight;
-    cv.width = w * dpr; cv.height = h * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    var hz = h * 0.47;
-
-    var sky = ctx.createLinearGradient(0, 0, 0, hz);
-    sky.addColorStop(0,   '#5E92CE');
-    sky.addColorStop(.45, '#9BC0E2');
-    sky.addColorStop(1,   '#E4EDF2');
-    ctx.fillStyle = sky; ctx.fillRect(0, 0, w, hz);
-
-    /* grey weather, upper left */
-    for (var i = 0; i < 70; i++) {
-      var x = rr(-w * .1, w * .62), y = rr(-h * .04, hz * .62), r = rr(h * .05, h * .17);
-      var g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, 'rgba(176,188,202,' + rr(.05, .15).toFixed(3) + ')');
-      g.addColorStop(1, 'rgba(176,188,202,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
-    }
-    /* white cumulus */
-    for (var j = 0; j < 130; j++) {
-      var cx = rr(-w * .05, w * 1.05), cy = rr(hz * .04, hz * .9), cr = rr(h * .035, h * .15);
-      var g2 = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr);
-      g2.addColorStop(0, 'rgba(254,253,251,' + rr(.30, .72).toFixed(3) + ')');
-      g2.addColorStop(1, 'rgba(253,252,250,0)');
-      ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(cx, cy, cr, 0, 6.2832); ctx.fill();
-    }
-
-    /* distant hills */
-    ctx.fillStyle = 'rgba(122,138,132,.55)';
-    ctx.beginPath(); ctx.moveTo(w * .55, hz);
-    for (var k = 0; k <= 20; k++) {
-      ctx.lineTo(w * .55 + (w * .45) * k / 20, hz - 6 - Math.sin(k * .8) * 5 - rr(0, 4));
-    }
-    ctx.lineTo(w, hz); ctx.closePath(); ctx.fill();
-
-    /* treeline */
-    for (var t = 0; t < 150; t++) {
-      var tx = rr(-20, w + 20), ty = hz - rr(2, 15), tr = rr(7, 20);
-      ctx.fillStyle = 'rgba(' + Math.round(rr(44, 70)) + ',' + Math.round(rr(66, 92)) + ',' + Math.round(rr(42, 62)) + ',.92)';
-      ctx.beginPath(); ctx.ellipse(tx, ty, tr, tr * rr(.55, .85), 0, 0, 6.2832); ctx.fill();
-    }
-    ctx.fillStyle = 'rgba(52,72,48,.9)'; ctx.fillRect(0, hz - 2, w, 5);
-
-    /* meadow */
-    var mg = ctx.createLinearGradient(0, hz, 0, h);
-    mg.addColorStop(0,   '#B4C078');
-    mg.addColorStop(.28, '#9DB162');
-    mg.addColorStop(.66, '#7E9A4E');
-    mg.addColorStop(1,   '#5E7C3C');
-    ctx.fillStyle = mg; ctx.fillRect(0, hz, w, h - hz);
-
-    /* grass strokes */
-    ctx.lineWidth = 1;
-    for (var s = 0; s < 2200; s++) {
-      var gx = rr(0, w), depth = rr(0, 1), gy = hz + Math.pow(depth, .7) * (h - hz);
-      var len = 4 + depth * 26;
-      ctx.strokeStyle = 'rgba(' + Math.round(rr(72, 132)) + ',' + Math.round(rr(96, 150)) + ',' + Math.round(rr(48, 84)) + ',' + rr(.16, .5).toFixed(2) + ')';
-      ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + rr(-3, 3), gy - len); ctx.stroke();
-    }
-
-    /* pale flowers, denser toward the foreground */
-    for (var f = 0; f < 420; f++) {
-      var fd = Math.pow(rnd(), .55);
-      var fx = rr(0, w), fy = hz + fd * (h - hz), fr = .9 + fd * 2.6;
-      ctx.fillStyle = rnd() > .45
-        ? 'rgba(233,241,247,' + rr(.55, .95).toFixed(2) + ')'
-        : 'rgba(178,206,231,' + rr(.45, .85).toFixed(2) + ')';
-      ctx.beginPath(); ctx.arc(fx, fy, fr, 0, 6.2832); ctx.fill();
-    }
-  }
-
-  paint();
-  var to;
-  window.addEventListener('resize', function () {
-    clearTimeout(to); to = setTimeout(paint, 160);
-  });
 
   /* the folder shakes only until it has been noticed, then stops for good */
   var folder = document.querySelector('.co-folder');
@@ -2340,6 +2641,7 @@
       }
     });
     sheet.scrollTop = 0;
+    sheet.classList.toggle('is-case', name !== 'home');
     if (topback) topback.hidden = (name === 'home');
     document.title = name === 'home' ? HOME_TITLE
       : (views[name].querySelector('h1') || {}).textContent + ' — Saathvika';
@@ -2354,13 +2656,387 @@
       location.hash = a.getAttribute('data-case');
     });
   });
-  document.querySelectorAll('[data-back]').forEach(function (b) {
-    b.addEventListener('click', function () {
-      if (history.length > 1) { history.back(); } else { location.hash = ''; }
+  /* ---- scrolling the sheet to a section ---- */
+  /* .sheet is the scroller AND the offsetParent, so offsetTop is already
+     measured inside it — no getBoundingClientRect arithmetic needed. */
+  /* hand-rolled tween rather than scrollTo({behavior:'smooth'}): the native
+     animation silently does nothing when the pane isn't being painted, and a
+     tab that looks dead is worse than one that jumps. Cancels on any real input. */
+  var tween = null;
+  function stopTween() { if (tween) { cancelAnimationFrame(tween); tween = null; } }
+  ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach(function (ev) {
+    window.addEventListener(ev, stopTween, { passive: true });
+  });
+
+  function scrollToSection(id, instant) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var to = Math.max(0, Math.min(el.offsetTop - 18, sheet.scrollHeight - sheet.clientHeight));
+    stopTween();
+    /* a hidden tab gets no animation frames at all, so tween there would
+       silently never move */
+    if (instant || noMotion || document.visibilityState === 'hidden') { sheet.scrollTop = to; return; }
+    var from = sheet.scrollTop, t0 = performance.now();
+    var ms = Math.min(620, 220 + Math.abs(to - from) * 0.35);
+    (function step(now) {
+      var k = Math.min(1, (now - t0) / ms);
+      sheet.scrollTop = from + (to - from) * (1 - Math.pow(1 - k, 3));
+      tween = k < 1 ? requestAnimationFrame(step) : null;
+    })(t0);
+  }
+
+  var navTabs = [].slice.call(document.querySelectorAll('.tab[data-goto]'));
+  function markTab(id) {
+    navTabs.forEach(function (t) {
+      t.setAttribute('aria-selected', String(t.getAttribute('data-goto') === id));
+    });
+  }
+
+  function goHome(sectionId) {
+    var atHome = !location.hash || location.hash === '#';
+    if (!atHome) history.replaceState(null, '', location.pathname + location.search);
+    showView('home');
+    /* showView already forced a reflow to restart the enter animation, so the
+       section's offsetTop is real by the time we read it — no rAF needed (and a
+       hidden tab would never deliver that frame anyway) */
+    scrollToSection(sectionId, !atHome);
+  }
+
+  navTabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      var id = t.getAttribute('data-goto');
+      markTab(id);
+      if (views.home.hidden) { goHome(id); } else { scrollToSection(id); }
     });
   });
-  window.addEventListener('hashchange', route);
+
+  /* ---- which tab is lit follows the scroll position ---- */
+  var spy = navTabs.map(function (t) { return t.getAttribute('data-goto'); });
+  function syncTabs() {
+    /* inside a case study none of the sections is on screen, so nothing is current */
+    if (views.home.hidden) { markTab(null); return; }
+    var line = sheet.scrollTop + sheet.clientHeight * 0.3;
+    var current = spy[0];
+    for (var i = 0; i < spy.length; i++) {
+      var el = document.getElementById(spy[i]);
+      if (el && el.offsetTop <= line) current = spy[i];
+    }
+    /* the very bottom always belongs to the last section, however short it is */
+    if (sheet.scrollTop + sheet.clientHeight >= sheet.scrollHeight - 4) current = spy[spy.length - 1];
+    markTab(current);
+  }
+  sheet.addEventListener('scroll', syncTabs, { passive: true });
+  window.addEventListener('resize', syncTabs);
+
+  /* "Back to work" returns to the work section, not just to the top of home */
+  document.querySelectorAll('[data-back]').forEach(function (b) {
+    b.addEventListener('click', function () { goHome('sec-work'); });
+  });
+  window.addEventListener('hashchange', function () { route(); syncTabs(); });
   route();
+  syncTabs();
+
+
+  /* ===================== VIDEO OVERLAY ===================== */
+  (function () {
+    var vo = document.getElementById('vo');
+    if (!vo) return;
+    var frame = document.getElementById('vo-frame');
+    var video = document.getElementById('vo-video');
+    var closeBtn = vo.querySelector('.vo-close');
+    var lastFocus = null;
+    /* vq/hd are best-effort: YouTube ultimately picks quality from bandwidth
+       and the player's rendered size, which is why the overlay is large */
+    var EMBED = 'https://www.youtube-nocookie.com/embed/3Q9bxJvhaEI'
+      + '?rel=0&modestbranding=1&playsinline=1&autoplay=1&vq=hd1080&hd=1';
+
+    function open(e) {
+      if (e) e.preventDefault();
+      lastFocus = document.activeElement;
+      vo.hidden = false;
+      sheet.style.overflow = 'hidden';          /* .sheet is the page scroller */
+      closeBtn.focus();
+      video.setAttribute('src', EMBED);
+    }
+    function close() {
+      vo.hidden = true;
+      sheet.style.overflow = '';
+      /* clearing src is what actually stops YouTube playing */
+      video.setAttribute('src', '');
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+
+    /* hero video card, bento video tile, and the "Who is she" button */
+    document.querySelectorAll('a[href="#summary"]').forEach(function (a) {
+      a.addEventListener('click', open);
+    });
+    vo.querySelectorAll('[data-vo-close]').forEach(function (b) {
+      b.addEventListener('click', close);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !vo.hidden) close();
+      /* keep tab focus inside the dialog while it's open */
+      /* the player needs to be tabbable, so only Shift+Tab is pinned back */
+      if (e.key === 'Tab' && e.shiftKey && !vo.hidden && document.activeElement === closeBtn) {
+        e.preventDefault();
+      }
+    });
+  })();
+
+  /* ===================== NOTES CAROUSEL (narrow screens) ===================== */
+  (function () {
+    var grid = document.querySelector('.tn-grid');
+    var dots = document.querySelector('.tn-dots');
+    if (!grid || !dots) return;
+    var notes = [].slice.call(grid.querySelectorAll('.tn'));
+    var mq = window.matchMedia('(max-width: 560px)');
+    var timer = null, paused = false, idx = 0;
+
+    notes.forEach(function (_, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('aria-label', 'Note ' + (i + 1));
+      b.addEventListener('click', function () { go(i, true); pauseFor(9000); });
+      dots.appendChild(b);
+    });
+    var btns = [].slice.call(dots.children);
+
+    function go(i, smooth) {
+      idx = (i + notes.length) % notes.length;
+      grid.scrollTo({ left: notes[idx].offsetLeft - grid.offsetLeft, behavior: smooth && !noMotion ? 'smooth' : 'auto' });
+      mark();
+    }
+    function mark() {
+      btns.forEach(function (b, i) { b.setAttribute('aria-current', i === idx ? 'true' : 'false'); });
+    }
+    function tick() { if (!paused && mq.matches) go(idx + 1, true); }
+    function start() { stop(); if (mq.matches && !noMotion) timer = setInterval(tick, 5200); }
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+    function pauseFor(ms) { paused = true; setTimeout(function () { paused = false; }, ms); }
+
+    /* keep the dots in step when the user scrolls or drags */
+    var raf = null;
+    grid.addEventListener('scroll', function () {
+      if (raf) return;
+      raf = requestAnimationFrame(function () {
+        raf = null;
+        var mid = grid.scrollLeft + grid.clientWidth / 2, best = 0, bd = Infinity;
+        notes.forEach(function (n, i) {
+          var c = n.offsetLeft - grid.offsetLeft + n.offsetWidth / 2;
+          var d = Math.abs(c - mid);
+          if (d < bd) { bd = d; best = i; }
+        });
+        if (best !== idx) { idx = best; mark(); }
+      });
+    }, { passive: true });
+
+    /* pointer drag (touch already scrolls natively) */
+    var down = false, sx = 0, sl = 0;
+    grid.addEventListener('pointerdown', function (e) {
+      if (!mq.matches || e.pointerType === 'touch') return;
+      down = true; sx = e.clientX; sl = grid.scrollLeft;
+      grid.classList.add('is-dragging'); paused = true;
+    });
+    window.addEventListener('pointermove', function (e) {
+      if (!down) return;
+      grid.scrollLeft = sl - (e.clientX - sx);
+    });
+    window.addEventListener('pointerup', function () {
+      if (!down) return;
+      down = false; grid.classList.remove('is-dragging');
+      go(idx, true); pauseFor(9000);
+    });
+
+    grid.addEventListener('pointerenter', function () { paused = true; });
+    grid.addEventListener('pointerleave', function () { paused = false; });
+
+    mq.addEventListener('change', function () {
+      if (mq.matches) { go(0, false); start(); } else { stop(); grid.scrollLeft = 0; }
+    });
+    mark(); start();
+  })();
+
+
+  /* ---- overlay scrollbar: drawn over the paper, so it costs no layout width ---- */
+  (function () {
+    var rail = document.querySelector('.srail');
+    var thumb = rail && rail.querySelector('.sthumb');
+    if (!rail || !thumb) return;
+    var MIN = 30, hideTimer = null;
+
+    function draw() {
+      var h = sheet.clientHeight, sh = sheet.scrollHeight;
+      if (sh <= h + 1) { rail.style.display = 'none'; return; }
+      rail.style.display = '';
+      var railH = rail.clientHeight;
+      var th = Math.max(MIN, Math.round(railH * h / sh));
+      var max = sh - h;
+      var top = max > 0 ? Math.round((railH - th) * (sheet.scrollTop / max)) : 0;
+      thumb.style.height = th + 'px';
+      thumb.style.top = top + 'px';
+    }
+
+    function flash() {
+      rail.classList.add('is-live');
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(function () { rail.classList.remove('is-live'); }, 900);
+    }
+
+    sheet.addEventListener('scroll', function () { draw(); flash(); }, { passive: true });
+    window.addEventListener('resize', draw);
+    /* the sheet's height changes when a view swaps, and scroll may not fire */
+    new MutationObserver(draw).observe(sheet, { childList: true, subtree: false, attributes: true });
+
+    /* dragging the thumb scrolls the sheet */
+    var dragging = false, grabY = 0, startTop = 0;
+    thumb.addEventListener('pointerdown', function (e) {
+      dragging = true; grabY = e.clientY; startTop = parseFloat(thumb.style.top) || 0;
+      rail.classList.add('is-dragging', 'is-live');
+      thumb.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    thumb.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var railH = rail.clientHeight, th = thumb.offsetHeight;
+      var span = railH - th;
+      if (span <= 0) return;
+      var t = Math.min(span, Math.max(0, startTop + (e.clientY - grabY)));
+      sheet.scrollTop = (t / span) * (sheet.scrollHeight - sheet.clientHeight);
+    });
+    function endDrag() {
+      if (!dragging) return;
+      dragging = false; rail.classList.remove('is-dragging'); flash();
+    }
+    thumb.addEventListener('pointerup', endDrag);
+    thumb.addEventListener('pointercancel', endDrag);
+
+    /* clicking the rail jumps a page */
+    rail.addEventListener('pointerdown', function (e) {
+      if (e.target === thumb) return;
+      var r = rail.getBoundingClientRect();
+      var want = (e.clientY - r.top) / r.height;
+      sheet.scrollTop = want * (sheet.scrollHeight - sheet.clientHeight);
+    });
+
+    draw();
+    window.addEventListener('load', draw);
+  })();
+
+
+  /* ---- work carousel: only live in the band where the grid would wrap ---- */
+  document.querySelectorAll('.wa-grid').forEach(function (grid) {
+    var sec = grid.closest('section');
+    var next = sec && sec.querySelector('.wa-next');
+    if (!next) return;
+    var mq = window.matchMedia('(min-width: 880px)');
+
+    /* two cards at a time: with ~2.5 in view, a single-card nudge leaves the last
+       card half cut, and the browser clamps the second hop to the end anyway */
+    function step() {
+      var card = grid.querySelector('.wa-card');
+      if (!card) return 480;
+      var one = card.getBoundingClientRect().width + parseFloat(getComputedStyle(grid).columnGap || 18);
+      return one * 2;
+    }
+    function atEnd() { return grid.scrollLeft >= grid.scrollWidth - grid.clientWidth - 4; }
+    function sync() {
+      next.disabled = !mq.matches || atEnd();
+      /* Ramp each fade in with the scroll rather than switching it on whole: a
+         fixed ramp snaps to full width at the first pixel of scroll, which
+         washes out a card that has barely moved. Each side's fade is capped by
+         how far there actually is to scroll past it. */
+      var max = grid.scrollWidth - grid.clientWidth;
+      var live = mq.matches && max > 1;
+      /* narrow: scroll snapping pins the grid to a card boundary, so at rest the
+         fade is always either off or at full width — a wide one washes out the
+         card it lands on instead of just softening the cut */
+      var CAP = 16;
+      var l = live ? Math.min(CAP, Math.max(0, grid.scrollLeft)) : 0;
+      var r = live ? Math.min(CAP, Math.max(0, max - grid.scrollLeft)) : 0;
+      grid.style.setProperty('--fade-l', l + 'px');
+      grid.style.setProperty('--fade-r', r + 'px');
+    }
+
+    /* a hidden tab gets no animation frames, so smooth scrolling there is a no-op */
+    function glide(left) {
+      var how = (noMotion || document.visibilityState === 'hidden') ? 'auto' : 'smooth';
+      grid.scrollTo({ left: left, behavior: how });
+    }
+    next.addEventListener('click', function () {
+      if (atEnd()) { glide(0); }
+      else { glide(grid.scrollLeft + step()); }
+    });
+
+    var down = false, sx = 0, sl = 0, moved = 0;
+    grid.addEventListener('pointerdown', function (e) {
+      if (!mq.matches || e.pointerType === 'touch') return;
+      down = true; moved = 0; sx = e.clientX; sl = grid.scrollLeft;
+      grid.classList.add('is-dragging');
+    });
+    window.addEventListener('pointermove', function (e) {
+      if (!down) return;
+      var d = e.clientX - sx;
+      moved = Math.max(moved, Math.abs(d));
+      grid.scrollLeft = sl - d;
+    });
+    window.addEventListener('pointerup', function () {
+      if (!down) return;
+      down = false; grid.classList.remove('is-dragging');
+    });
+    /* a drag shouldn't also open the card it started on */
+    grid.addEventListener('click', function (e) {
+      if (moved > 6) { e.preventDefault(); e.stopPropagation(); moved = 0; }
+    }, true);
+
+    grid.addEventListener('scroll', sync, { passive: true });
+    mq.addEventListener('change', function () { grid.scrollLeft = 0; sync(); });
+    sync();
+  });
+
+
+  /* ---- hover preview: a silent local clip, not a YouTube embed. The embed
+     always draws its title, logo and overlay buttons over the picture and no
+     parameter removes them — a <video> has no chrome at all. ---- */
+  (function () {
+    var CLIP = 'assets/summary-preview.mp4';
+    if (noMotion) return;
+    /* pointer-fine only: no hover on touch, and it would cost data for nothing */
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+    document.querySelectorAll('.hv, .b-video').forEach(function (card) {
+      var slot = card.querySelector('.vprev');
+      if (!slot) return;
+
+      var v = document.createElement('video');
+      v.muted = true; v.loop = true; v.playsInline = true;
+      v.preload = 'auto';
+      v.setAttribute('muted', '');
+      v.setAttribute('playsinline', '');
+      v.setAttribute('aria-hidden', 'true');
+      v.setAttribute('tabindex', '-1');
+      v.src = CLIP;
+      slot.appendChild(v);
+
+      /* if the clip is missing or won't decode, leave the poster alone */
+      var usable = false;
+      v.addEventListener('canplay', function () { usable = true; });
+      v.addEventListener('error', function () { usable = false; });
+
+      card.addEventListener('pointerenter', function () {
+        if (!usable) return;
+        var pr = v.play();
+        if (pr && pr.then) pr.then(function () { card.classList.add('is-previewing'); })
+                             .catch(function () {});
+        else card.classList.add('is-previewing');
+      });
+      function off() {
+        card.classList.remove('is-previewing');
+        try { v.pause(); v.currentTime = 0; } catch (e) {}
+      }
+      card.addEventListener('pointerleave', off);
+      card.addEventListener('click', off);
+    });
+  })();
 
   /* tabs — the resume link navigates away, so it isn't part of the selection */
   document.querySelectorAll('.tab:not(.tab-out)').forEach(function (b) {
